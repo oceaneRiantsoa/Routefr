@@ -1,4 +1,4 @@
-package com.example.project;
+package com.example.projet;
 
 
 import org.springframework.boot.SpringApplication;

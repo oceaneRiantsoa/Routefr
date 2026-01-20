@@ -18,3 +18,161 @@ body {
   width: 100%;
   height: 100vh;
 }
+
+/* ============================
+   PANNEAU RÉCAPITULATIF
+   ============================ */
+.recap-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  min-width: 280px;
+  max-width: 320px;
+}
+
+.recap-panel h3 {
+  margin-bottom: 12px;
+  color: #2c3e50;
+  font-size: 16px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 8px;
+}
+
+.recap-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.recap-table td {
+  padding: 8px 5px;
+  font-size: 14px;
+}
+
+.recap-table td:first-child {
+  color: #7f8c8d;
+}
+
+.recap-table td:last-child {
+  text-align: right;
+  color: #2c3e50;
+}
+
+/* Barre de progression */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* ============================
+   LÉGENDE
+   ============================ */
+.legend {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.legend h4 {
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================
+   POPUP PERSONNALISÉ
+   ============================ */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 12px 15px;
+}
+
+.popup-content h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 15px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 6px;
+}
+
+.popup-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.popup-table td {
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.popup-table td:first-child {
+  color: #7f8c8d;
+  width: 90px;
+}
+
+.popup-table td:last-child {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.popup-comment {
+  margin-top: 10px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+/* ============================
+   MARQUEUR PERSONNALISÉ
+   ============================ */
+.custom-marker {
+  background: transparent;
+  border: none;
+}

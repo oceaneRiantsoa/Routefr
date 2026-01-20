@@ -1,4 +1,4 @@
-package com.example.project.dto;
+package com.example.projet.dto;
 
 
 public class PointDTO {
