@@ -8,4 +8,5 @@ RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests
 FROM eclipse-temurin:17-jdk
 WORKDIR /app
 COPY --from=build /app/target/backend.jar .
+COPY --from=build /app/src/main/resources/serviceAccountKey.json .
 CMD ["java", "-jar", "backend.jar"]

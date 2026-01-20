@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/routefr
+    url: jdbc:postgresql://db:5432/route_signalement
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -11,13 +11,12 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+        format_sql: true
 
 # Firebase Configuration
 firebase:
   config:
     path: serviceAccountKey.json
-  database:
-    url: https://test-8f6f5.firebaseio.com
   api:
     key: AIzaSyB-9oIDJlAiFITWf48-Xlgw4T0ByhjWRV8
 
@@ -38,6 +37,7 @@ springdoc:
 # Logging
 logging:
   level:
+    root: INFO
     com.example.projet: DEBUG
     org.springframework.security: DEBUG
-    com.google.firebase: DEBUG
+    org.springframework.web: DEBUG
