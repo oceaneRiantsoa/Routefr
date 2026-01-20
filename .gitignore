@@ -1,0 +1,38 @@
+# Maven
+target/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Firebase credentials
+**/serviceAccountKey.json
+!backend/src/main/resources/serviceAccountKey.json
+
+# Build outputs
+build/
+dist/
+*.class
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Environment
+.env
+.env.local
+*.log
