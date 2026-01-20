@@ -1,0 +1,12 @@
+{
+  "styles": {
+    "basic": {
+      "style": "styles/basic/style.json"
+    }
+  },
+  "data": {
+    "antananarivo": {
+      "mbtiles": "antananarivo.mbtiles"
+    }
+  }
+}

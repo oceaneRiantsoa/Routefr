@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  # ============================
+  # SERVEUR DE TUILES OFFLINE (Antananarivo)
+  # ============================
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: tileserver_offline
+    restart: always
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./tiles:/data
+
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: postgis_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: route_signalement
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build: ./backend
+    container_name: springboot_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/route_signalement
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: react_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+
+# VERSION AVEC IMAGES PRÉ-CONSTRUITES
+  # Pour ton ami qui a reçu les fichiers .tar
+  # Il doit commenter la version ci-dessus et décommenter celle-ci
+  # ============================
+  # backend:
+  #   image: routesignalement-backend
+  #   container_name: springboot_api
+  #   restart: always
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/route_signalement
+  #     SPRING_DATASOURCE_USERNAME: postgres
+  #     SPRING_DATASOURCE_PASSWORD: postgres
+  #   depends_on:
+  #     - db
+
+  # ============================
+  # VERSION AVEC IMAGES PRÉ-CONSTRUITES
+  # Pour ton ami qui a reçu les fichiers .tar
+  # Il doit commenter la version ci-dessus et décommenter celle-ci
+  # ============================
+  # frontend:
+  #   image: routesignalement-frontend
+  #   container_name: react_frontend
+  #   restart: always
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
