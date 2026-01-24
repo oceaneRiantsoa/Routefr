@@ -76,8 +76,8 @@ const MapView = () => {
   useEffect(() => {
     // Charger les points et le récapitulatif
     Promise.all([
-      axios.get('http://localhost:8080/api/map/points'),
-      axios.get('http://localhost:8080/api/map/recap')
+      axios.get('http://localhost:8080/api/public/map/points'),
+      axios.get('http://localhost:8080/api/public/map/recap')
     ])
       .then(([pointsRes, recapRes]) => {
         setPoints(pointsRes.data);
@@ -114,8 +114,8 @@ const MapView = () => {
                 <td>📈 Avancement</td>
                 <td>
                   <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
+                    <div
+                      className="progress-fill"
                       style={{ width: `${recap.avancementPourcent}%` }}
                     ></div>
                   </div>
@@ -131,7 +131,7 @@ const MapView = () => {
         ) : (
           <p>Aucune donnée</p>
         )}
-        
+
         {/* Légende */}
         <div className="legend">
           <h4>Légende</h4>
@@ -165,8 +165,8 @@ const MapView = () => {
           }}
         />
         {points.map(point => (
-          <Marker 
-            key={point.id} 
+          <Marker
+            key={point.id}
             position={[point.lat, point.lng]}
             icon={createCustomIcon(point.status)}
           >
@@ -182,7 +182,7 @@ const MapView = () => {
                     <tr>
                       <td>🔄 Statut:</td>
                       <td>
-                        <span 
+                        <span
                           className="status-badge"
                           style={{ backgroundColor: getStatusColor(point.status) }}
                         >

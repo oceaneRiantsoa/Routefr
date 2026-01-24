@@ -49,7 +49,8 @@ services:
       - "3000:80"
     depends_on:
       - backend
-mobile:
+
+  mobile:
     build: ./mobile
     container_name: vue_ionic_mobile
     restart: always
@@ -59,8 +60,7 @@ mobile:
       - ./mobile/.env.local
     depends_on:
       - backend
-
-# VERSION AVEC IMAGES PRÉ-CONSTRUITES
+  # VERSION AVEC IMAGES PRÉ-CONSTRUITES
   # Pour ton ami qui a reçu les fichiers .tar
   # Il doit commenter la version ci-dessus et décommenter celle-ci
   # ============================
