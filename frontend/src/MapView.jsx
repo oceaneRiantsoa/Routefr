@@ -67,7 +67,7 @@ const createCustomIcon = (status) => {
   });
 };
 
-const MapView = ({ onManagerClick }) => {
+const MapView = ({ onManagerClick, onSignalementsClick }) => {
   const [points, setPoints] = useState([]);
   const [recap, setRecap] = useState(null);
   const [tileError, setTileError] = useState(false);
@@ -94,15 +94,25 @@ const MapView = ({ onManagerClick }) => {
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
-      {/* Bouton Manager */}
-      {onManagerClick && (
-        <button 
-          className="manager-button"
-          onClick={onManagerClick}
-        >
-          👤 Gestion Utilisateurs
-        </button>
-      )}
+      {/* Boutons Manager */}
+      <div className="manager-buttons">
+        {onSignalementsClick && (
+          <button 
+            className="manager-button signalements-btn"
+            onClick={onSignalementsClick}
+          >
+            🗺️ Gestion Signalements
+          </button>
+        )}
+        {onManagerClick && (
+          <button 
+            className="manager-button users-btn"
+            onClick={onManagerClick}
+          >
+            👤 Gestion Utilisateurs
+          </button>
+        )}
+      </div>
 
       {/* Tableau récapitulatif */}
       <div className="recap-panel">
