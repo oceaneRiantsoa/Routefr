@@ -1,25 +1,55 @@
 package com.example.projet.entity;
 
-
 import jakarta.persistence.*;
+import lombok.*;
 import org.locationtech.jts.geom.Point;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "signalement_details")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SignalementDetails {
-@Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-private Long id;
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
+    @Column(name = "id_signalement")
+    private Integer idSignalement;
 
-@Column(columnDefinition = "geography(Point,4326)")
-private Point geom;
+    @Column(name = "id_probleme")
+    private Integer idProbleme;
 
+    @Column(name = "surface")
+    private BigDecimal surface;
 
-// getters et setters
-public Long getId() { return id; }
-public void setId(Long id) { this.id = id; }
-public Point getGeom() { return geom; }
-public void setGeom(Point geom) { this.geom = geom; }
+    @Column(name = "id_entreprise")
+    private Integer idEntreprise;
+
+    @Column(name = "commentaires")
+    private String commentaires;
+
+    @Column(columnDefinition = "geography(Point,4326)")
+    private Point geom;
+
+    // Champs pour la gestion Manager
+    @Column(name = "budget_estime")
+    private BigDecimal budgetEstime;
+
+    @Column(name = "entreprise_assignee")
+    private String entrepriseAssignee;
+
+    @Column(name = "notes_manager")
+    private String notesManager;
+
+    @Column(name = "statut_manager")
+    private String statutManager;
+
+    @Column(name = "date_modification")
+    private LocalDateTime dateModification;
 }
