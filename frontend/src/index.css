@@ -176,3 +176,28 @@ body {
   background: transparent;
   border: none;
 }
+
+/* ============================
+   BOUTON MANAGER
+   ============================ */
+.manager-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.4);
+  transition: all 0.3s ease;
+}
+
+.manager-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.5);
+}

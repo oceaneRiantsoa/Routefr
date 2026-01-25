@@ -15,12 +15,14 @@ DROP TABLE IF EXISTS signalement;
 DROP TABLE IF EXISTS entreprise;
 DROP TABLE IF EXISTS profils;
 DROP TABLE IF EXISTS probleme;
+DROP TABLE IF EXISTS user_sessions;
+DROP TABLE IF EXISTS local_users;
 
 -- ============================
 -- TABLE : profils
 -- ============================
 CREATE TABLE profils (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     id_role_value INT NOT NULL
 );
@@ -29,7 +31,7 @@ CREATE TABLE profils (
 -- TABLE : entreprise
 -- ============================
 CREATE TABLE entreprise (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     nom_entreprise VARCHAR(150) NOT NULL,
     localisation VARCHAR(200),
     contact VARCHAR(100)
@@ -39,7 +41,7 @@ CREATE TABLE entreprise (
 -- TABLE : probleme
 -- ============================
 CREATE TABLE probleme (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     detail TEXT,
     cout_par_m2 NUMERIC(12,2) NOT NULL
@@ -49,7 +51,7 @@ CREATE TABLE probleme (
 -- TABLE : signalement
 -- ============================
 CREATE TABLE signalement (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     idProfils INT NOT NULL,
     datetime_signalement TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_signalement_profils
@@ -60,7 +62,7 @@ CREATE TABLE signalement (
 -- TABLE : signalement_details (POSTGIS)
 -- ============================
 CREATE TABLE signalement_details (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     id_signalement INT NOT NULL,
     id_probleme INT NOT NULL,
     surface NUMERIC(10,2) NOT NULL,
@@ -84,7 +86,7 @@ USING GIST (geom);
 -- TABLE : signalement_status
 -- ============================
 CREATE TABLE signalement_status (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     id_signalement INT NOT NULL,
     idStatut INT NOT NULL,
     CONSTRAINT fk_status_signalement
@@ -144,3 +146,36 @@ FROM signalement s
 JOIN signalement_details sd ON sd.id_signalement = s.id
 JOIN probleme p ON p.id = sd.id_probleme
 LEFT JOIN signalement_status st ON st.id_signalement = s.id;
+
+CREATE TABLE IF NOT EXISTS local_users (
+    id BIGSERIAL PRIMARY KEY,
+    firebase_uid VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    display_name VARCHAR(255),
+    role VARCHAR(50) DEFAULT 'USER',
+    failed_attempts INT DEFAULT 0,
+    account_locked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    firebase_uid VARCHAR(255) NOT NULL,
+    session_token VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    CONSTRAINT fk_session_user 
+        FOREIGN KEY (firebase_uid) 
+        REFERENCES local_users(firebase_uid) 
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_local_users_email ON local_users(email);
+CREATE INDEX IF NOT EXISTS idx_local_users_firebase_uid ON local_users(firebase_uid);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_sessions_firebase_uid ON user_sessions(firebase_uid);
+CREATE INDEX IF NOT EXISTS idx_sessions_active ON user_sessions(active);

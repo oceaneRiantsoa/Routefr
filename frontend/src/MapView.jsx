@@ -67,7 +67,7 @@ const createCustomIcon = (status) => {
   });
 };
 
-const MapView = () => {
+const MapView = ({ onManagerClick }) => {
   const [points, setPoints] = useState([]);
   const [recap, setRecap] = useState(null);
   const [tileError, setTileError] = useState(false);
@@ -76,8 +76,8 @@ const MapView = () => {
   useEffect(() => {
     // Charger les points et le récapitulatif
     Promise.all([
-      axios.get('http://localhost:8080/api/map/points'),
-      axios.get('http://localhost:8080/api/map/recap')
+      axios.get('http://localhost:8086/api/map/points'),
+      axios.get('http://localhost:8086/api/map/recap')
     ])
       .then(([pointsRes, recapRes]) => {
         setPoints(pointsRes.data);
@@ -94,6 +94,16 @@ const MapView = () => {
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+      {/* Bouton Manager */}
+      {onManagerClick && (
+        <button 
+          className="manager-button"
+          onClick={onManagerClick}
+        >
+          👤 Gestion Utilisateurs
+        </button>
+      )}
+
       {/* Tableau récapitulatif */}
       <div className="recap-panel">
         <h3>📊 Récapitulatif</h3>
