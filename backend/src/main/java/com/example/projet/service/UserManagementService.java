@@ -5,7 +5,6 @@ import com.example.projet.entity.*;
 import com.example.projet.repository.LocalUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +18,13 @@ import java.util.Optional;
 public class UserManagementService {
     
     private final LocalUserRepository userRepository;
-    
-    @Value("${app.auth.max-failed-attempts:3}")
-    private int maxFailedAttempts;
+    private final SecuritySettingsService securitySettings;
     
     // Règle métier: Limite de tentatives
     @Transactional
     public void checkLoginAttempts(String email) {
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
+        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
@@ -46,6 +44,7 @@ public class UserManagementService {
     @Transactional
     public void incrementFailedAttempts(String email) {
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
+        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
