@@ -185,3 +185,39 @@ CREATE INDEX IF NOT EXISTS idx_local_users_firebase_uid ON local_users(firebase_
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessions_firebase_uid ON user_sessions(firebase_uid);
 CREATE INDEX IF NOT EXISTS idx_sessions_active ON user_sessions(active);
+
+-- ============================
+-- TABLE : signalement_firebase (Signalements synchronisés depuis Firebase)
+-- ============================
+DROP TABLE IF EXISTS signalement_firebase;
+
+CREATE TABLE signalement_firebase (
+    id BIGSERIAL PRIMARY KEY,
+    firebase_id VARCHAR(255) UNIQUE NOT NULL,
+    user_id VARCHAR(255),
+    user_email VARCHAR(255),
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    probleme_id VARCHAR(100),
+    probleme_nom VARCHAR(200),
+    description TEXT,
+    status VARCHAR(50),
+    surface NUMERIC(10,2),
+    budget NUMERIC(15,2),
+    date_creation_firebase TIMESTAMP,
+    photo_url TEXT,
+    entreprise_id VARCHAR(100),
+    entreprise_nom VARCHAR(200),
+    notes_manager TEXT,
+    statut_local VARCHAR(50) DEFAULT 'non_traite',
+    budget_estime NUMERIC(15,2),
+    date_synchronisation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_modification_local TIMESTAMP,
+    geom GEOGRAPHY(Point, 4326)
+);
+
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_id ON signalement_firebase(firebase_id);
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_user_id ON signalement_firebase(user_id);
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_status ON signalement_firebase(status);
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_statut_local ON signalement_firebase(statut_local);
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_geom ON signalement_firebase USING GIST (geom);

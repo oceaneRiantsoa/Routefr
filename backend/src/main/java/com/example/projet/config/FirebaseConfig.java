@@ -1,9 +1,11 @@
 package com.example.projet.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.cloud.FirestoreClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,6 +58,14 @@ public class FirebaseConfig {
             }
         }
         return FirebaseApp.getInstance();
+    }
+    
+    @Bean
+    public Firestore firestore(FirebaseApp firebaseApp) {
+        log.info("🔥 Initialisation Firestore...");
+        Firestore firestore = FirestoreClient.getFirestore(firebaseApp);
+        log.info("✅ Firestore initialisé avec succès!");
+        return firestore;
     }
     
     @Bean
