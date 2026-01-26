@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './BlockedUsersPage.css';
 
 const API_BASE_URL = 'http://localhost:8086/api/manager';
 
-const BlockedUsersPage = ({ onBack }) => {
+const BlockedUsersPage = () => {
+  const navigate = useNavigate();
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,8 +74,8 @@ const BlockedUsersPage = ({ onBack }) => {
       {/* Header */}
       <header className="page-header">
         <div className="header-content">
-          <button className="back-button" onClick={onBack}>
-            ← Retour à la carte
+          <button className="back-button" onClick={() => navigate('/manager')}>
+            ← Retour au Manager
           </button>
           <h1>🔒 Gestion des Utilisateurs Bloqués</h1>
           <p className="subtitle">Interface Manager - Déblocage des comptes</p>
