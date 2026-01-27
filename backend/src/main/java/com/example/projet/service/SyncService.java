@@ -141,15 +141,26 @@ public class SyncService {
         });
         
         try {
-            return future.get(30, TimeUnit.SECONDS);
+            return future.get(60, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             log.error("❌ Erreur lors de la synchronisation Firebase: {}", e.getMessage());
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
+            
+            // Message d'erreur plus descriptif
+            String errorMsg;
+            if (e instanceof TimeoutException) {
+                errorMsg = "Timeout - Vérifiez votre connexion Internet et les règles de sécurité Firebase";
+            } else if (e.getCause() != null) {
+                errorMsg = e.getCause().getMessage();
+            } else {
+                errorMsg = e.getMessage();
+            }
+            
             return SyncResultDTO.builder()
                     .success(false)
-                    .message("Erreur de connexion à Firebase: " + e.getMessage())
+                    .message("Erreur de connexion à Firebase: " + errorMsg)
                     .dateSynchronisation(LocalDateTime.now())
                     .build();
         }
@@ -191,9 +202,9 @@ public class SyncService {
         });
         
         try {
-            return future.get(30, TimeUnit.SECONDS);
+            return future.get(60, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
-            throw new ExecutionException("Timeout lors de la récupération des données Firebase", e);
+            throw new ExecutionException("Timeout lors de la récupération des données Firebase - Vérifiez votre connexion Internet", e);
         }
     }
     
