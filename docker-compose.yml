@@ -52,16 +52,16 @@ services:
     depends_on:
       - backend
 
-  mobile:
-    build: ./mobile
-    container_name: vue_ionic_mobile
-    restart: always
-    ports:
-      - "5173:80"
-    env_file:
-      - ./mobile/.env.local
-    depends_on:
-      - backend
+  # mobile:
+  #   build: ./mobile
+  #   container_name: vue_ionic_mobile
+  #   restart: always
+  #   ports:
+  #     - "5173:80"
+  #   env_file:
+  #     - ./mobile/.env.local
+  #   depends_on:
+  #     - backend
   # VERSION AVEC IMAGES PRÉ-CONSTRUITES
   # Pour ton ami qui a reçu les fichiers .tar
   # Il doit commenter la version ci-dessus et décommenter celle-ci

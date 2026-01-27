@@ -1,0 +1,165 @@
+/* frontend/src/components/ManagerPage.css */
+
+.manager-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+  padding: 40px 20px;
+}
+
+.manager-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 50px;
+}
+
+.manager-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.manager-header p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.manager-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.manager-card {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  width: 320px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.manager-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+}
+
+.signalements-card::before {
+  background: linear-gradient(90deg, #f39c12, #e74c3c);
+}
+
+.users-card::before {
+  background: linear-gradient(90deg, #3498db, #9b59b6);
+}
+
+.map-card::before {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+}
+
+.manager-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.card-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.manager-card h2 {
+  color: #1a237e;
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+}
+
+.manager-card p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.manager-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.manager-card li {
+  padding: 8px 0;
+  color: #555;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+}
+
+.manager-card li:last-child {
+  border-bottom: none;
+}
+
+.manager-card li::before {
+  content: '✓';
+  color: #27ae60;
+  margin-right: 10px;
+}
+
+.card-button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signalements-card .card-button {
+  background: linear-gradient(90deg, #f39c12, #e74c3c);
+  color: white;
+}
+
+.users-card .card-button {
+  background: linear-gradient(90deg, #3498db, #9b59b6);
+  color: white;
+}
+
+.map-card .card-button {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  color: white;
+}
+
+.card-button:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.manager-footer {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 50px;
+  font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .manager-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .manager-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .manager-card {
+    width: 100%;
+    max-width: 350px;
+  }
+}

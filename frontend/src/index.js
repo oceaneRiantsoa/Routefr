@@ -1,31 +1,30 @@
 // frontend/src/index.js
-import React, { useState } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MapView from './MapView';
+import ManagerPage from './components/ManagerPage';
 import BlockedUsersPage from './components/BlockedUsersPage';
 import SignalementsPage from './components/SignalementsPage';
 import './index.css';
 
-// Application principale avec navigation simple
+// Application principale avec React Router
 const App = () => {
-  const [currentPage, setCurrentPage] = useState('map');
-
-  // Navigation
-  const goToBlockedUsers = () => setCurrentPage('blocked-users');
-  const goToSignalements = () => setCurrentPage('signalements');
-  const goToMap = () => setCurrentPage('map');
-
   return (
-    <>
-      {currentPage === 'map' && (
-        <MapView 
-          onManagerClick={goToBlockedUsers} 
-          onSignalementsClick={goToSignalements}
-        />
-      )}
-      {currentPage === 'blocked-users' && <BlockedUsersPage onBack={goToMap} />}
-      {currentPage === 'signalements' && <SignalementsPage onBack={goToMap} />}
-    </>
+    <BrowserRouter>
+      <Routes>
+        {/* Page publique - Carte des signalements */}
+        <Route path="/" element={<MapView />} />
+        
+        {/* Pages Manager */}
+        <Route path="/manager" element={<ManagerPage />} />
+        <Route path="/manager/signalements" element={<SignalementsPage />} />
+        <Route path="/manager/users" element={<BlockedUsersPage />} />
+        
+        {/* Redirection par défaut */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 

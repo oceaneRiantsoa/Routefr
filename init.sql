@@ -69,10 +69,11 @@ CREATE TABLE signalement_details (
     id_entreprise INT,
     commentaires TEXT,
     geom GEOGRAPHY(Point, 4326) NOT NULL,
-    budget_estime DECIMAL(10, 2),
-    entreprise_assignee VARCHAR(255),
+    -- Colonnes pour la gestion Manager
+    budget_estime NUMERIC(15,2),
+    entreprise_assignee VARCHAR(200),
     notes_manager TEXT,
-    statut_manager VARCHAR(100),
+    statut_manager VARCHAR(50),
     date_modification TIMESTAMP,
 
     CONSTRAINT fk_details_signalement

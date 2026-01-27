@@ -4,7 +4,6 @@ import com.example.projet.entity.UserSession;
 import com.example.projet.repository.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +19,7 @@ import java.util.UUID;
 public class SessionService {
     
     private final UserSessionRepository sessionRepository;
-    
-    @Value("${app.session.duration-minutes:60}")
-    private int sessionDurationMinutes;
+    private final SecuritySettingsService securitySettings;
     
     /**
      * Créer une nouvelle session pour un utilisateur
@@ -30,6 +27,7 @@ public class SessionService {
     @Transactional
     public String createSession(String firebaseUid, String ipAddress, String userAgent) {
         String sessionToken = UUID.randomUUID().toString();
+        int sessionDurationMinutes = securitySettings.getSessionDurationMinutes();
         
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusMinutes(sessionDurationMinutes);
@@ -79,6 +77,7 @@ public class SessionService {
      */
     @Transactional
     public void refreshSession(String sessionToken) {
+        int sessionDurationMinutes = securitySettings.getSessionDurationMinutes();
         sessionRepository.findBySessionToken(sessionToken).ifPresent(session -> {
             session.setExpiresAt(LocalDateTime.now().plusMinutes(sessionDurationMinutes));
             sessionRepository.save(session);

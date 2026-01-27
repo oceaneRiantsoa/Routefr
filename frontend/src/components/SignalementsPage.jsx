@@ -1,5 +1,6 @@
 // frontend/src/components/SignalementsPage.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SignalementDetailModal from './SignalementDetailModal';
 import './SignalementsPage.css';
@@ -38,7 +39,8 @@ const getStatusInfo = (idStatut) => {
   return STATUTS[idStatut] || STATUTS[10];
 };
 
-const SignalementsPage = ({ onBack }) => {
+const SignalementsPage = () => {
+  const navigate = useNavigate();
   const [signalements, setSignalements] = useState([]);
   const [filteredSignalements, setFilteredSignalements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -121,8 +123,8 @@ const SignalementsPage = ({ onBack }) => {
     <div className="signalements-page">
       {/* Header */}
       <header className="signalements-header">
-        <button className="back-button" onClick={onBack}>
-          ← Retour à la carte
+        <button className="back-button" onClick={() => navigate('/manager')}>
+          ← Retour au Manager
         </button>
         <h1>🗺️ Gestion des Signalements</h1>
         <div className="header-stats">
