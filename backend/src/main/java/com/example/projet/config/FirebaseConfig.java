@@ -1,12 +1,12 @@
 package com.example.projet.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.database.FirebaseDatabase;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -20,6 +20,9 @@ import java.io.InputStream;
 @Configuration
 @Slf4j
 public class FirebaseConfig {
+    
+    @Value("${firebase.database.url:https://test-8f6f5-default-rtdb.firebaseio.com}")
+    private String firebaseDatabaseUrl;
     
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
@@ -46,10 +49,12 @@ public class FirebaseConfig {
 
                 FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setDatabaseUrl(firebaseDatabaseUrl)
                     .build();
                 
                 FirebaseApp app = FirebaseApp.initializeApp(options);
                 log.info("✅ Firebase App initialisé avec succès!");
+                log.info("📡 URL Realtime Database: {}", firebaseDatabaseUrl);
                 return app;
                 
             } catch (IOException e) {
@@ -61,11 +66,11 @@ public class FirebaseConfig {
     }
     
     @Bean
-    public Firestore firestore(FirebaseApp firebaseApp) {
-        log.info("🔥 Initialisation Firestore...");
-        Firestore firestore = FirestoreClient.getFirestore(firebaseApp);
-        log.info("✅ Firestore initialisé avec succès!");
-        return firestore;
+    public FirebaseDatabase firebaseDatabase(FirebaseApp firebaseApp) {
+        log.info("🔥 Initialisation Firebase Realtime Database...");
+        FirebaseDatabase database = FirebaseDatabase.getInstance(firebaseApp);
+        log.info("✅ Firebase Realtime Database initialisé avec succès!");
+        return database;
     }
     
     @Bean
