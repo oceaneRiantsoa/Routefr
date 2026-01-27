@@ -27,7 +27,7 @@ mvn spring-boot:run
 ### 3. **Vérifier Swagger UI**
 Ouvrir dans le navigateur:
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:8086/swagger-ui.html
 ```
 
 ---
@@ -36,7 +36,7 @@ http://localhost:8080/swagger-ui.html
 
 ### **BASE URL**
 ```
-http://localhost:8080/api/auth
+http://localhost:8086/api/auth
 ```
 
 ---

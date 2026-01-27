@@ -1,20 +1,25 @@
 package com.example.projet.service;
 
-
-
 import com.google.firebase.auth.*;
 import com.example.projet.dto.*;
+import com.example.projet.entity.LocalUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
 
 @Service
 @Slf4j
@@ -31,6 +36,9 @@ public class FirebaseAuthService {
     
     private final RestTemplate restTemplate = new RestTemplate();
     
+    @Autowired(required = false)
+    private PasswordEncoder passwordEncoder;
+
     // INSCRIPTION
     public UserResponse register(AuthRequest request) throws FirebaseAuthException {
         log.info("Inscription pour: {}", request.getEmail());
@@ -51,11 +59,12 @@ public class FirebaseAuthService {
         
         firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
         
-        // 3. Créer enregistrement local pour règles métier
-        userManagementService.createLocalUser(
+        // 3. Créer enregistrement local pour règles métier + stocker le hash du mot de passe
+        userManagementService.createLocalUserWithPassword(
             userRecord.getUid(),
             request.getEmail(),
-            request.getDisplayName()
+            request.getDisplayName(),
+            passwordEncoder.encode(request.getPassword())
         );
         
         // 4. Générer token personnalisé pour client
@@ -73,66 +82,114 @@ public class FirebaseAuthService {
             .build();
     }
     
-    // CONNEXION
+    // CONNEXION - Toujours essayer Firebase d'abord
     public String login(LoginRequest request) throws FirebaseAuthException {
         log.info("Tentative de connexion pour: {}", request.getEmail());
         
         // 1. Vérifier règles métier (limite tentatives)
         userManagementService.checkLoginAttempts(request.getEmail());
         
+        // 2. Toujours essayer Firebase d'abord
         try {
-            // 2. Vérifier le mot de passe avec Firebase Auth REST API
-            String idToken = verifyPasswordWithFirebase(request.getEmail(), request.getPassword());
-            
-            // 3. Si succès, réinitialiser tentatives
-            userManagementService.resetFailedAttempts(request.getEmail());
-            
-            // 4. Récupérer utilisateur
-            UserRecord userRecord = firebaseAuth.getUserByEmail(request.getEmail());
-            
-            // 5. Vérifier si compte désactivé
-            if (userRecord.isDisabled()) {
-                throw new RuntimeException("Compte désactivé");
-            }
-            
-            // 6. Générer custom token (pour client SDK)
-            return firebaseAuth.createCustomToken(userRecord.getUid());
-            
-        } catch (HttpClientErrorException e) {
-            // Incrémenter tentatives échouées
-            userManagementService.incrementFailedAttempts(request.getEmail());
-            
-            // Vérifier si le compte vient d'être bloqué
-            try {
-                userManagementService.checkLoginAttempts(request.getEmail());
-            } catch (RuntimeException blockedException) {
-                // Le compte est maintenant bloqué
-                throw blockedException;
-            }
-            
-            // Si pas encore bloqué, retourner erreur normale
-            if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
-                throw new RuntimeException("Email ou mot de passe incorrect");
-            }
-            throw new RuntimeException("Erreur lors de la connexion: " + e.getMessage());
-            
+            log.info("Tentative de connexion via Firebase...");
+            return loginWithFirebase(request);
         } catch (Exception e) {
-            // Pour toute autre exception
-            if (e.getMessage().contains("bloqué")) {
-                throw e; // Relancer l'exception de blocage
+            // 3. Si erreur réseau → fallback vers mode local
+            if (isNetworkError(e)) {
+                log.warn("Erreur réseau Firebase, tentative mode hors ligne: {}", e.getMessage());
+                return loginLocally(request);
             }
-            
-            userManagementService.incrementFailedAttempts(request.getEmail());
-            
-            // Vérifier si le compte vient d'être bloqué
-            try {
-                userManagementService.checkLoginAttempts(request.getEmail());
-            } catch (RuntimeException blockedException) {
-                throw blockedException;
-            }
-            
-            throw new RuntimeException("Erreur connexion: " + e.getMessage());
+            // 4. Sinon, propager l'erreur (mauvais mot de passe, compte désactivé, etc.)
+            log.error("Erreur Firebase (non réseau): {}", e.getMessage());
+            throw e;
         }
+    }
+
+    /**
+     * Vérifie si l'exception est due à un problème réseau
+     */
+    private boolean isNetworkError(Exception e) {
+        // Vérifier le type d'exception
+        if (e instanceof ResourceAccessException) {
+            return true;
+        }
+        if (e.getCause() instanceof ConnectException) {
+            return true;
+        }
+        if (e.getCause() instanceof UnknownHostException) {
+            return true;
+        }
+        
+        // Vérifier le message d'erreur
+        String message = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        return message.contains("connection") || 
+               message.contains("timeout") || 
+               message.contains("network") ||
+               message.contains("unreachable") ||
+               message.contains("unknown host") ||
+               message.contains("no route to host") ||
+               message.contains("connect timed out") ||
+               message.contains("failed to connect");
+    }
+
+    private String loginWithFirebase(LoginRequest request) throws FirebaseAuthException {
+        // Vérifier le mot de passe via Firebase REST API
+        String idToken = verifyPasswordWithFirebase(request.getEmail(), request.getPassword());
+        
+        // Réinitialiser les tentatives échouées
+        userManagementService.resetFailedAttempts(request.getEmail());
+        
+        // Récupérer les infos utilisateur depuis Firebase
+        UserRecord userRecord = firebaseAuth.getUserByEmail(request.getEmail());
+        
+        if (userRecord.isDisabled()) {
+            throw new RuntimeException("Compte désactivé");
+        }
+        
+        // Synchroniser et stocker le hash du mot de passe pour usage hors ligne
+        userManagementService.syncFirebaseUserToLocal(
+            userRecord.getUid(),
+            userRecord.getEmail(),
+            userRecord.getDisplayName(),
+            passwordEncoder.encode(request.getPassword())
+        );
+        
+        log.info("Connexion Firebase réussie pour: {}", request.getEmail());
+        return firebaseAuth.createCustomToken(userRecord.getUid());
+    }
+
+    private String loginLocally(LoginRequest request) {
+        log.info("Mode hors ligne activé pour: {}", request.getEmail());
+        
+        // Chercher l'utilisateur dans la base locale
+        LocalUser localUser = userManagementService.findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé. Vous devez vous connecter au moins une fois avec Internet."));
+        
+        // Vérifier si le compte est bloqué
+        if (localUser.isAccountLocked()) {
+            throw new RuntimeException("Compte bloqué après 3 tentatives échouées");
+        }
+        
+        // Vérifier si le mot de passe hashé existe
+        if (localUser.getPasswordHash() == null || localUser.getPasswordHash().isEmpty()) {
+            throw new RuntimeException("Ce compte n'a jamais été utilisé en ligne. Connectez-vous d'abord avec Internet.");
+        }
+        
+        // Vérifier le mot de passe
+        if (!passwordEncoder.matches(request.getPassword(), localUser.getPasswordHash())) {
+            userManagementService.incrementFailedAttempts(request.getEmail());
+            throw new RuntimeException("Mot de passe incorrect");
+        }
+        
+        // Succès - Réinitialiser les tentatives et mettre à jour last_login
+        userManagementService.resetFailedAttempts(request.getEmail());
+        localUser.setLastLogin(LocalDateTime.now());
+        userManagementService.save(localUser);
+        
+        log.info("Connexion locale réussie pour: {}", request.getEmail());
+        
+        // Retourner un token local (préfixé pour le distinguer d'un token Firebase)
+        return "local-token-" + UUID.randomUUID().toString();
     }
     
     /**
@@ -168,6 +225,9 @@ public class FirebaseAuthService {
             
         } catch (HttpClientErrorException e) {
             log.error("Erreur Firebase Auth API: {}", e.getResponseBodyAsString());
+            
+            // Incrémenter les tentatives échouées
+            userManagementService.incrementFailedAttempts(email);
             
             if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
                 throw new RuntimeException("Email ou mot de passe incorrect");

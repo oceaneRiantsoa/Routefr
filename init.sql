@@ -69,6 +69,11 @@ CREATE TABLE signalement_details (
     id_entreprise INT,
     commentaires TEXT,
     geom GEOGRAPHY(Point, 4326) NOT NULL,
+    budget_estime DECIMAL(10, 2),
+    entreprise_assignee VARCHAR(255),
+    notes_manager TEXT,
+    statut_manager VARCHAR(100),
+    date_modification TIMESTAMP,
 
     CONSTRAINT fk_details_signalement
         FOREIGN KEY (id_signalement) REFERENCES signalement(id),
@@ -151,6 +156,7 @@ CREATE TABLE IF NOT EXISTS local_users (
     id BIGSERIAL PRIMARY KEY,
     firebase_uid VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
     display_name VARCHAR(255),
     role VARCHAR(50) DEFAULT 'USER',
     failed_attempts INT DEFAULT 0,

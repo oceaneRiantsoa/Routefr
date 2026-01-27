@@ -77,9 +77,7 @@ const MapView = ({ onManagerClick, onSignalementsClick }) => {
     // Charger les points et le récapitulatif
     Promise.all([
       axios.get('http://localhost:8086/api/map/points'),
-      axios.get('http://localhost:8086/api/map/recap'),
-      axios.get('http://localhost:8080/api/public/map/points'),
-      axios.get('http://localhost:8080/api/public/map/recap')
+      axios.get('http://localhost:8086/api/map/recap')
     ])
       .then(([pointsRes, recapRes]) => {
         setPoints(pointsRes.data);
