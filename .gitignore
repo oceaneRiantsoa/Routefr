@@ -36,4 +36,8 @@ Thumbs.db
 .env
 .env.local
 *.log
-mobile/
+
+# Mobile specific
+mobile/node_modules/
+mobile/dist/
+mobile/build/

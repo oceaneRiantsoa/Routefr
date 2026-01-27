@@ -16,6 +16,9 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 /**
  * Configuration de sécurité Spring Security
  * Permet l'accès public aux endpoints d'authentification
@@ -25,43 +28,54 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Désactiver CSRF pour API REST
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activer CORS
-            .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // API stateless
-            )
-            .authorizeHttpRequests(auth -> auth
-                // Endpoints publics (authentification)
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/manager/**").permitAll()
-                .requestMatchers("/api/map/**").permitAll()
-                
-                // Swagger UI (documentation)
-                .requestMatchers(
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**",
-                    "/swagger-resources/**",
-                    "/webjars/**"
-                ).permitAll()
-                
-                // Health check
-                .requestMatchers("/actuator/**", "/health/**").permitAll()
-                
-                // Ressources statiques
-                .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
-                
-                // Page d'erreur
-                .requestMatchers("/error").permitAll()
-                
-                // Tous les autres endpoints nécessitent une authentification
-                .anyRequest().permitAll()
-            )
-            .httpBasic(basic -> basic.disable()) // Désactiver Basic Auth
-            .formLogin(form -> form.disable());  // Désactiver form login
-        
+                .csrf(csrf -> csrf.disable()) // Désactiver CSRF pour API REST
+                .cors(cors -> cors.disable()) // Configurer CORS si nécessaire
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // API
+                                                                                                             // stateless
+                )
+                .authorizeHttpRequests(auth -> auth
+                        // Endpoints publics (authentification)
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // Endpoints publics - Carte visiteurs (sans authentification)
+                        .requestMatchers("/api/public/**").permitAll()
+
+                        // Swagger UI (documentation)
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/api-docs/**",           // ← AJOUTER
+                                "/api-docs",              // ← AJOUTER
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                "/configuration/ui",      // ← AJOUTER
+                                "/configuration/security" // ← AJOUTER
+                        )
+                        .permitAll()
+
+                        // Health check
+                        .requestMatchers("/actuator/**", "/health/**").permitAll()
+
+                        // Ressources statiques
+                        .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
+
+                        // Page d'erreur
+                        .requestMatchers("/error").permitAll()
+
+                        // Tous les autres endpoints nécessitent une authentification
+                        .anyRequest().authenticated())
+                .httpBasic(basic -> basic.disable()) // Désactiver Basic Auth
+                .formLogin(form -> form.disable()); // Désactiver form login
+
         return http.build();
     }
 

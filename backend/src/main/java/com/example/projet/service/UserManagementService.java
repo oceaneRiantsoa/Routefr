@@ -105,6 +105,106 @@ public class UserManagementService {
         log.info("Utilisateur local créé pour: {}", email);
     }
     
+    /**
+     * Créer un utilisateur local avec le hash du mot de passe (lors de l'inscription)
+     */
+    public void createLocalUserWithPassword(String firebaseUid, String email, String displayName, String passwordHash) {
+        LocalUser user = new LocalUser();
+        user.setFirebaseUid(firebaseUid);
+        user.setEmail(email);
+        user.setDisplayName(displayName);
+        user.setPasswordHash(passwordHash);
+        user.setRole("USER");
+        user.setCreatedAt(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now());
+        user.setFailedAttempts(0);
+        user.setAccountLocked(false);
+        
+        userRepository.save(user);
+        log.info("Utilisateur local créé avec mot de passe hashé: {}", email);
+    }
+    
+    /**
+     * Synchronise un utilisateur Firebase vers local_users.
+     * Si l'utilisateur existe déjà, met à jour ses infos.
+     * Si l'utilisateur n'existe pas, le crée.
+     * IMPORTANT: Cette méthode doit être appelée AVANT de créer une session.
+     */
+    @Transactional
+    public void syncFirebaseUserToLocal(String firebaseUid, String email, String displayName, String passwordHash) {
+        Optional<LocalUser> existingUser = userRepository.findByFirebaseUid(firebaseUid);
+        
+        LocalUser user;
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            user.setLastLogin(LocalDateTime.now());
+            // Mettre à jour le hash si fourni
+            if (passwordHash != null) {
+                user.setPasswordHash(passwordHash);
+            }
+        } else {
+            user = new LocalUser();
+            user.setFirebaseUid(firebaseUid);
+            user.setEmail(email);
+            user.setDisplayName(displayName);
+            user.setPasswordHash(passwordHash);
+            user.setRole("USER");
+            user.setCreatedAt(LocalDateTime.now());
+            user.setLastLogin(LocalDateTime.now());
+        }
+        
+        userRepository.save(user);
+        log.info("Utilisateur synchronisé avec la base locale: {}", email);
+    }
+    
+    @Transactional
+    public void syncFirebaseUserToLocal(String uid, String email, String displayName) {
+        Optional<LocalUser> existingByUid = userRepository.findByFirebaseUid(uid);
+        
+        if (existingByUid.isPresent()) {
+            // L'utilisateur existe déjà par UID, mettre à jour si nécessaire
+            LocalUser user = existingByUid.get();
+            if (email != null && !email.equals(user.getEmail())) {
+                user.setEmail(email);
+            }
+            if (displayName != null && !displayName.equals(user.getDisplayName())) {
+                user.setDisplayName(displayName);
+            }
+            userRepository.save(user);
+            log.info("✅ Utilisateur local synchronisé (existant par UID): {}", email);
+            return;
+        }
+        
+        // Vérifier si l'utilisateur existe par email (créé lors d'une tentative échouée)
+        Optional<LocalUser> existingByEmail = userRepository.findByEmail(email);
+        
+        if (existingByEmail.isPresent()) {
+            // Mettre à jour l'UID Firebase
+            LocalUser user = existingByEmail.get();
+            user.setFirebaseUid(uid);
+            if (displayName != null) {
+                user.setDisplayName(displayName);
+            }
+            userRepository.save(user);
+            log.info("✅ Utilisateur local mis à jour avec UID Firebase: {}", email);
+            return;
+        }
+        
+        // L'utilisateur n'existe pas, le créer
+        LocalUser newUser = LocalUser.builder()
+            .firebaseUid(uid)
+            .email(email)
+            .displayName(displayName)
+            .role("USER")
+            .failedAttempts(0)
+            .accountLocked(false)
+            .createdAt(LocalDateTime.now())
+            .build();
+        
+        userRepository.save(newUser);
+        log.info("✅ Nouvel utilisateur local créé lors de la synchronisation: {}", email);
+    }
+    
     @Transactional
     public void updateLocalUser(String uid, Map<String, Object> updates) {
         Optional<LocalUser> userOpt = userRepository.findByFirebaseUid(uid);
@@ -136,5 +236,14 @@ public class UserManagementService {
             user.setFailedAttempts(0);
             userRepository.save(user);
         });
+    }
+    
+    public Optional<LocalUser> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    
+    @Transactional
+    public LocalUser save(LocalUser user) {
+        return userRepository.save(user);
     }
 }

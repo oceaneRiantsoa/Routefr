@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS local_users (
     id BIGSERIAL PRIMARY KEY,
     firebase_uid VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
     display_name VARCHAR(255),
     role VARCHAR(50) DEFAULT 'USER',
     failed_attempts INT DEFAULT 0,
