@@ -36,7 +36,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // Désactiver CSRF pour API REST
-                .cors(cors -> cors.disable()) // Configurer CORS si nécessaire
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activer CORS avec configuration
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // API
                                                                                                              // stateless
                 )
@@ -53,11 +53,11 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
-                                "/api-docs/**",           // ← AJOUTER
-                                "/api-docs",              // ← AJOUTER
+                                "/api-docs/**", // ← AJOUTER
+                                "/api-docs", // ← AJOUTER
                                 "/swagger-resources/**",
                                 "/webjars/**",
-                                "/configuration/ui",      // ← AJOUTER
+                                "/configuration/ui", // ← AJOUTER
                                 "/configuration/security" // ← AJOUTER
                         )
                         .permitAll()
@@ -94,7 +94,7 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true);
         // Durée du cache preflight
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
