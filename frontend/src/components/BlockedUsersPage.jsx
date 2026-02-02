@@ -13,14 +13,16 @@ const BlockedUsersPage = () => {
   const [unblocking, setUnblocking] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   
+  // Paramètres de sécurité
   const [securitySettings, setSecuritySettings] = useState({
-    sessionDuration: 30,
-    maxLoginAttempts: 5,
-    lockoutDuration: 15
+    sessionDuration: 60,
+    maxLoginAttempts: 3,
+    lockoutDuration: 30
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
+  // Charger les paramètres de sécurité
   const fetchSecuritySettings = async () => {
     try {
       setLoadingSettings(true);
@@ -33,6 +35,7 @@ const BlockedUsersPage = () => {
     }
   };
 
+  // Sauvegarder les paramètres de sécurité
   const saveSecuritySettings = async () => {
     try {
       setSavingSettings(true);
@@ -48,21 +51,14 @@ const BlockedUsersPage = () => {
     }
   };
 
+  // Réinitialiser les paramètres
   const resetSecuritySettings = () => {
     setSecuritySettings({
-      sessionDuration: 30,
-      maxLoginAttempts: 5,
-      lockoutDuration: 15
+      sessionDuration: 60,
+      maxLoginAttempts: 3,
+      lockoutDuration: 30
     });
   };
-
-  // Paramètres de sécurité
-  const [securitySettings, setSecuritySettings] = useState({
-    sessionDurationMinutes: 60,
-    maxFailedAttempts: 3
-  });
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsChanged, setSettingsChanged] = useState(false);
 
   // Charger les utilisateurs bloqués
   const fetchBlockedUsers = async () => {
@@ -79,69 +75,10 @@ const BlockedUsersPage = () => {
     }
   };
 
-  // Charger les paramètres de sécurité
-  const fetchSecuritySettings = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/settings/security`);
-      setSecuritySettings(response.data);
-      setSettingsChanged(false);
-    } catch (err) {
-      console.error('Erreur chargement paramètres:', err);
-    }
-  };
-
   useEffect(() => {
     fetchBlockedUsers();
     fetchSecuritySettings();
   }, []);
-
-  // Mettre à jour les paramètres de sécurité
-  const handleUpdateSettings = async () => {
-    try {
-      setSettingsLoading(true);
-      const response = await axios.put(`${API_BASE_URL}/settings/security`, securitySettings);
-      setSecuritySettings(response.data);
-      setSettingsChanged(false);
-      setSuccessMessage('✅ Paramètres de sécurité mis à jour !');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors de la mise à jour';
-      setError(errorMsg);
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
-  // Réinitialiser les paramètres
-  const handleResetSettings = async () => {
-    if (!window.confirm('Voulez-vous réinitialiser les paramètres aux valeurs par défaut ?')) {
-      return;
-    }
-    try {
-      setSettingsLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/settings/security/reset`);
-      setSecuritySettings(response.data);
-      setSettingsChanged(false);
-      setSuccessMessage('✅ Paramètres réinitialisés !');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err) {
-      setError('Erreur lors de la réinitialisation');
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
-  // Gérer le changement des inputs
-  const handleSettingChange = (field, value) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setSecuritySettings(prev => ({
-        ...prev,
-        [field]: numValue
-      }));
-      setSettingsChanged(true);
-    }
-  };
 
   // Débloquer un utilisateur
   const handleUnblock = async (userId, userEmail) => {
@@ -175,7 +112,7 @@ const BlockedUsersPage = () => {
       <header className="page-header">
         <div className="header-content">
           <button className="back-button" onClick={() => navigate('/manager')}>
-            ← Retour au Manager
+            Retour au Manager
           </button>
           <h1>Gestion des Utilisateurs Bloques</h1>
           <p className="subtitle">Interface Manager - Deblocage des comptes</p>
@@ -204,7 +141,7 @@ const BlockedUsersPage = () => {
                 value={securitySettings.sessionDuration}
                 onChange={(e) => setSecuritySettings({
                   ...securitySettings,
-                  sessionDuration: parseInt(e.target.value) || 30
+                  sessionDuration: parseInt(e.target.value) || 60
                 })}
                 min="1"
                 max="1440"
@@ -218,7 +155,7 @@ const BlockedUsersPage = () => {
                 value={securitySettings.maxLoginAttempts}
                 onChange={(e) => setSecuritySettings({
                   ...securitySettings,
-                  maxLoginAttempts: parseInt(e.target.value) || 5
+                  maxLoginAttempts: parseInt(e.target.value) || 3
                 })}
                 min="1"
                 max="10"
@@ -240,68 +177,10 @@ const BlockedUsersPage = () => {
             >
               Reinitialiser
             </button>
-        {/* Section Paramètres de sécurité */}
-        <div className="settings-card">
-          <h2>⚙️ Paramètres de sécurité</h2>
-          <div className="settings-form">
-            <div className="setting-item">
-              <label htmlFor="sessionDuration">
-                ⏱️ Durée de vie des sessions (minutes)
-              </label>
-              <input
-                type="number"
-                id="sessionDuration"
-                min="1"
-                max="1440"
-                value={securitySettings.sessionDurationMinutes}
-                onChange={(e) => handleSettingChange('sessionDurationMinutes', e.target.value)}
-                className="setting-input"
-              />
-              <span className="setting-hint">Min: 1, Max: 1440 (24h)</span>
-            </div>
-            
-            <div className="setting-item">
-              <label htmlFor="maxAttempts">
-                🔐 Limite de tentatives de connexion
-              </label>
-              <input
-                type="number"
-                id="maxAttempts"
-                min="1"
-                max="10"
-                value={securitySettings.maxFailedAttempts}
-                onChange={(e) => handleSettingChange('maxFailedAttempts', e.target.value)}
-                className="setting-input"
-              />
-              <span className="setting-hint">Min: 1, Max: 10</span>
-            </div>
-
-            <div className="settings-actions">
-              <button 
-                className="save-settings-button"
-                onClick={handleUpdateSettings}
-                disabled={settingsLoading || !settingsChanged}
-              >
-                {settingsLoading ? '⏳ Sauvegarde...' : '💾 Sauvegarder'}
-              </button>
-              <button 
-                className="reset-settings-button"
-                onClick={handleResetSettings}
-                disabled={settingsLoading}
-              >
-                🔄 Réinitialiser
-              </button>
-            </div>
           </div>
         </div>
 
         {/* Messages */}
-        {successMessage && (
-          <div className="alert alert-success">
-            {successMessage}
-          </div>
-        </div>
-
         {successMessage && (
           <div className="alert alert-success">{successMessage}</div>
         )}
