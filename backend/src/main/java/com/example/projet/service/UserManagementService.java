@@ -18,11 +18,15 @@ import java.util.Optional;
 public class UserManagementService {
     
     private final LocalUserRepository userRepository;
+    private final SecuritySettingsService securitySettingsService;
+    
+    // Règle métier: Limite de tentatives - maintenant dynamique depuis la base de données
     private final SecuritySettingsService securitySettings;
     
     // Règle métier: Limite de tentatives
     @Transactional
     public void checkLoginAttempts(String email) {
+        int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
         int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
         
@@ -43,6 +47,7 @@ public class UserManagementService {
     
     @Transactional
     public void incrementFailedAttempts(String email) {
+        int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
         int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
         
@@ -51,7 +56,7 @@ public class UserManagementService {
             int newAttempts = user.getFailedAttempts() + 1;
             user.setFailedAttempts(newAttempts);
             
-            log.warn("⚠️ Tentative échouée {} pour {}", newAttempts, email);
+            log.warn("⚠️ Tentative échouée {} pour {} (limite: {})", newAttempts, email, maxFailedAttempts);
             
             // Bloquer immédiatement si limite atteinte
             if (newAttempts >= maxFailedAttempts) {

@@ -2,13 +2,16 @@ package com.example.projet.service;
 
 import com.example.projet.dto.PointDetailDTO;
 import com.example.projet.dto.RecapDTO;
+import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementDetailsRepository;
+import com.example.projet.repository.SignalementFirebaseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,16 +24,20 @@ import java.util.stream.Collectors;
 public class MapService {
 
     private final SignalementDetailsRepository signalementRepository;
+    private final SignalementFirebaseRepository signalementFirebaseRepository;
 
     /**
      * Récupérer tous les points pour affichage sur la carte
+     * Combine les signalements locaux ET les signalements synchronisés depuis Firebase
      */
     public List<PointDetailDTO> getAllPoints() {
         log.info("Récupération de tous les points pour la carte");
 
-        List<Object[]> rawData = signalementRepository.findAllPointsWithDetails();
+        List<PointDetailDTO> allPoints = new ArrayList<>();
 
-        return rawData.stream()
+        // 1. Récupérer les signalements de la table signalement_details (ancienne source)
+        List<Object[]> rawData = signalementRepository.findAllPointsWithDetails();
+        List<PointDetailDTO> localPoints = rawData.stream()
                 .map(row -> {
                     Long id = row[0] != null ? ((Number) row[0]).longValue() : null;
                     double lat = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
@@ -52,29 +59,124 @@ public class MapService {
                             idStatut, surface, coutParM2, entreprise, commentaires);
                 })
                 .collect(Collectors.toList());
+        
+        allPoints.addAll(localPoints);
+        log.info("Points locaux (signalement_details): {}", localPoints.size());
+
+        // 2. Récupérer les signalements synchronisés depuis Firebase
+        List<SignalementFirebase> firebaseSignalements = signalementFirebaseRepository.findAll();
+        List<PointDetailDTO> firebasePoints = firebaseSignalements.stream()
+                .filter(s -> s.getLatitude() != null && s.getLongitude() != null)
+                .map(s -> {
+                    // Convertir le statut Firebase en idStatut local
+                    Integer idStatut = convertFirebaseStatusToId(s.getStatus());
+                    
+                    // Utiliser un ID négatif ou offset pour distinguer des signalements locaux
+                    Long id = s.getId() != null ? s.getId() + 10000L : null;
+                    
+                    double surface = s.getSurface() != null ? s.getSurface().doubleValue() : 0.0;
+                    double budget = s.getBudget() != null ? s.getBudget().doubleValue() : 0.0;
+                    
+                    return new PointDetailDTO(
+                            id,
+                            s.getLatitude(),
+                            s.getLongitude(),
+                            s.getProblemeNom() != null ? s.getProblemeNom() : "Signalement Firebase",
+                            s.getDateCreationFirebase(),
+                            idStatut,
+                            surface,
+                            budget,
+                            s.getEntrepriseNom(),
+                            s.getDescription()
+                    );
+                })
+                .collect(Collectors.toList());
+        
+        allPoints.addAll(firebasePoints);
+        log.info("Points Firebase (signalement_firebase): {}", firebasePoints.size());
+        log.info("Total des points pour la carte: {}", allPoints.size());
+
+        return allPoints;
     }
 
     /**
-     * Calculer le récapitulatif global
+     * Convertir le statut Firebase en ID de statut local
+     */
+    private Integer convertFirebaseStatusToId(String firebaseStatus) {
+        if (firebaseStatus == null) return 10; // EN_ATTENTE par défaut
+        
+        switch (firebaseStatus.toLowerCase()) {
+            case "nouveau":
+            case "en_attente":
+                return 10; // EN_ATTENTE
+            case "en_cours":
+                return 20; // EN_COURS
+            case "traite":
+            case "resolu":
+                return 30; // TRAITE
+            case "rejete":
+                return 40; // REJETE
+            default:
+                return 10; // EN_ATTENTE par défaut
+        }
+    }
+
+    /**
+     * Calculer le récapitulatif global (incluant Firebase)
      */
     public RecapDTO getRecap() {
         log.info("Calcul du récapitulatif");
 
+        // Récapitulatif des signalements locaux
         List<Object[]> result = signalementRepository.getRecapitulation();
 
-        if (result.isEmpty() || result.get(0) == null) {
-            return new RecapDTO(0, 0.0, 0.0, 0.0);
+        int nbPointsLocal = 0;
+        double totalSurfaceLocal = 0.0;
+        double avancementLocal = 0.0;
+        double totalBudgetLocal = 0.0;
+
+        if (!result.isEmpty() && result.get(0) != null) {
+            Object[] row = result.get(0);
+            nbPointsLocal = row[0] != null ? ((Number) row[0]).intValue() : 0;
+            totalSurfaceLocal = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            avancementLocal = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+            totalBudgetLocal = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
         }
 
-        Object[] row = result.get(0);
-        int nbPoints = row[0] != null ? ((Number) row[0]).intValue() : 0;
-        double totalSurface = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
-        double avancementPourcent = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
-        double totalBudget = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+        // Récapitulatif des signalements Firebase
+        List<SignalementFirebase> firebaseSignalements = signalementFirebaseRepository.findAll();
+        int nbPointsFirebase = firebaseSignalements.size();
+        double totalSurfaceFirebase = firebaseSignalements.stream()
+                .filter(s -> s.getSurface() != null)
+                .mapToDouble(s -> s.getSurface().doubleValue())
+                .sum();
+        double totalBudgetFirebase = firebaseSignalements.stream()
+                .filter(s -> s.getBudget() != null)
+                .mapToDouble(s -> s.getBudget().doubleValue())
+                .sum();
+        
+        // Calculer l'avancement Firebase (signalements traités / total)
+        long firebaseTraites = firebaseSignalements.stream()
+                .filter(s -> "traite".equalsIgnoreCase(s.getStatus()) || "resolu".equalsIgnoreCase(s.getStatus()))
+                .count();
 
-        RecapDTO recap = new RecapDTO(nbPoints, totalSurface, avancementPourcent, totalBudget);
-        log.info("Récapitulatif: {} points, {} m², {}% avancement, {} Ar",
-                recap.nbPoints, recap.totalSurface, recap.avancementPourcent, recap.totalBudget);
+        // Combiner les deux sources
+        int totalPoints = nbPointsLocal + nbPointsFirebase;
+        double totalSurface = totalSurfaceLocal + totalSurfaceFirebase;
+        double totalBudget = totalBudgetLocal + totalBudgetFirebase;
+        
+        // Calculer l'avancement global
+        double avancementGlobal = 0.0;
+        if (totalPoints > 0) {
+            // Nombre total de signalements traités
+            long localTraites = (long) (nbPointsLocal * avancementLocal / 100.0);
+            long totalTraites = localTraites + firebaseTraites;
+            avancementGlobal = (double) totalTraites / totalPoints * 100.0;
+        }
+
+        RecapDTO recap = new RecapDTO(totalPoints, totalSurface, avancementGlobal, totalBudget);
+        log.info("Récapitulatif global: {} points ({} local + {} Firebase), {} m², {}% avancement, {} Ar",
+                recap.nbPoints, nbPointsLocal, nbPointsFirebase, recap.totalSurface, recap.avancementPourcent, recap.totalBudget);
 
         return recap;
     }

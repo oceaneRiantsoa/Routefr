@@ -6,6 +6,7 @@ import MapView from './MapView';
 import ManagerPage from './components/ManagerPage';
 import BlockedUsersPage from './components/BlockedUsersPage';
 import SignalementsPage from './components/SignalementsPage';
+import SyncPage from './components/SyncPage';
 import './index.css';
 
 // Application principale avec React Router
@@ -20,6 +21,7 @@ const App = () => {
         <Route path="/manager" element={<ManagerPage />} />
         <Route path="/manager/signalements" element={<SignalementsPage />} />
         <Route path="/manager/users" element={<BlockedUsersPage />} />
+        <Route path="/manager/sync" element={<SyncPage />} />
         
         {/* Redirection par défaut */}
         <Route path="*" element={<Navigate to="/" replace />} />

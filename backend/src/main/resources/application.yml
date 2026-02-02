@@ -19,6 +19,8 @@ firebase:
     path: serviceAccountKey.json
   api:
     key: AIzaSyB-9oIDJlAiFITWf48-Xlgw4T0ByhjWRV8
+  database:
+    url: https://test-8f6f5-default-rtdb.firebaseio.com
 
 # Authentication Configuration
 app:
