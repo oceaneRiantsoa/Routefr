@@ -74,12 +74,10 @@ const MapView = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Charger les points et le récapitulatif
+    // Charger les points et le récapitulatif (endpoints publics sans authentification)
     Promise.all([
-      axios.get('http://localhost:8086/api/map/points'),
-      axios.get('http://localhost:8086/api/map/recap'),
-      axios.get('http://localhost:8080/api/public/map/points'),
-      axios.get('http://localhost:8080/api/public/map/recap')
+      axios.get('http://localhost:8086/api/public/map/points'),
+      axios.get('http://localhost:8086/api/public/map/recap')
     ])
       .then(([pointsRes, recapRes]) => {
         setPoints(pointsRes.data);

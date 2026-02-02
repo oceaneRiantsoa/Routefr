@@ -104,6 +104,10 @@
 
 /* Section Parametres de securite */
 .security-settings-section {
+/* ============================
+   SETTINGS CARD
+   ============================ */
+.settings-card {
   background: white;
   border-radius: 16px;
   padding: 25px 30px;
@@ -116,6 +120,122 @@
   font-size: 20px;
   font-weight: 600;
   color: #1e3a8a;
+  border-left: 5px solid #8b5cf6;
+}
+
+.settings-card h2 {
+  color: #1e3a8a;
+  font-size: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.settings-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.setting-item {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-item label {
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.setting-input {
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 16px;
+  width: 100%;
+  max-width: 200px;
+  transition: all 0.3s ease;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.setting-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+.setting-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.save-settings-button {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+.save-settings-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+}
+
+.save-settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.reset-settings-button {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.reset-settings-button:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.reset-settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================
+   ALERTS
+   ============================ */
+.alert {
+  padding: 16px 20px;
+  border-radius: 12px;
   margin-bottom: 20px;
 }
 

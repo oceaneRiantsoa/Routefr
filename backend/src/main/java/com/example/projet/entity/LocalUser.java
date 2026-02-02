@@ -29,6 +29,8 @@ public class LocalUser {
     private int failedAttempts;
     private boolean accountLocked;
     
+    private String passwordHash;
+    
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
 }
