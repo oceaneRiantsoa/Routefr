@@ -74,23 +74,47 @@ public class AuthController {
         try {
             String customToken = firebaseAuthService.login(request);
             
-            // Récupérer l'utilisateur pour obtenir son UID
-            var userRecord = firebaseAuthService.getUserByEmail(request.getEmail());
+            // Vérifier si c'est un token local (mode hors ligne)
+            boolean isOfflineMode = customToken.startsWith("local-token-");
             
-            // Créer une session
-            String sessionToken = sessionService.createSession(
-                userRecord.getUid(),
-                getClientIP(httpRequest),
-                httpRequest.getHeader("User-Agent")
-            );
+            String uid;
+            String email = request.getEmail();
+            String sessionToken;
+            
+            if (isOfflineMode) {
+                // Mode hors ligne : récupérer l'UID depuis la base locale
+                var localUser = userManagementService.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur local non trouvé"));
+                uid = localUser.getFirebaseUid();
+                
+                // Créer une session locale
+                sessionToken = sessionService.createSession(
+                    uid,
+                    getClientIP(httpRequest),
+                    httpRequest.getHeader("User-Agent")
+                );
+            } else {
+                // Mode en ligne : récupérer l'utilisateur depuis Firebase
+                var userRecord = firebaseAuthService.getUserByEmail(email);
+                uid = userRecord.getUid();
+                email = userRecord.getEmail();
+                
+                // Créer une session
+                sessionToken = sessionService.createSession(
+                    uid,
+                    getClientIP(httpRequest),
+                    httpRequest.getHeader("User-Agent")
+                );
+            }
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Connexion réussie");
+            response.put("message", isOfflineMode ? "Connexion locale réussie" : "Connexion réussie");
             response.put("customToken", customToken);
             response.put("sessionToken", sessionToken);
-            response.put("uid", userRecord.getUid());
-            response.put("email", userRecord.getEmail());
+            response.put("uid", uid);
+            response.put("email", email);
+            response.put("offlineMode", isOfflineMode);
             
             return ResponseEntity.ok(response);
             

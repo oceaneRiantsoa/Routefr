@@ -70,6 +70,17 @@ const BlockedUsersPage = () => {
     }
   };
 
+  // Charger les paramètres de sécurité
+  const fetchSecuritySettings = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/settings/security`);
+      setSecuritySettings(response.data);
+      setSettingsChanged(false);
+    } catch (err) {
+      console.error('Erreur chargement paramètres:', err);
+    }
+  };
+
   useEffect(() => {
     fetchBlockedUsers();
     fetchSecuritySettings();
