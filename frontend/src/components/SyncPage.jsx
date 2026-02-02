@@ -1,4 +1,3 @@
-// frontend/src/components/SyncPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SyncPage.css';
@@ -7,18 +6,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8086'
 
 const SyncPage = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [pushPreviewLoading, setPushPreviewLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
-  const [pushResult, setPushResult] = useState(null);
-  const [previewData, setPreviewData] = useState(null);
-  const [pushPreviewData, setPushPreviewData] = useState(null);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
-  const [activeTab, setActiveTab] = useState('apercu');
-  const [activeSection, setActiveSection] = useState('pull');
 
   useEffect(() => {
     loadStats();
@@ -36,121 +28,65 @@ const SyncPage = () => {
     }
   };
 
-  const handlePreview = async () => {
-    setPreviewLoading(true);
-    setError(null);
-    setPreviewData(null);
-    try {
-      const response = await fetch(BACKEND_URL + '/api/manager/sync/preview');
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur serveur: ' + response.status);
-      }
-      if (Array.isArray(data)) {
-        setPreviewData(data);
-        setActiveTab('apercu');
-      } else if (data.error) {
-        throw new Error(data.error);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  const handleSync = async () => {
-    if (!window.confirm('Voulez-vous synchroniser les signalements depuis Firebase?')) {
+  const handleFullSync = async () => {
+    if (!window.confirm('Lancer la synchronisation complete?')) {
       return;
     }
-    setLoading(true);
+
+    setSyncing(true);
     setError(null);
     setSyncResult(null);
+    setSyncProgress({ step: 1, message: 'Etape 1/2 : Recuperation depuis Firebase (Pull)...' });
+
+    let pullResult = null;
+    let pushResult = null;
+
     try {
-      const response = await fetch(BACKEND_URL + '/api/manager/sync/pull', {
+      const pullResponse = await fetch(BACKEND_URL + '/api/manager/sync/pull', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      if (!response.ok) {
-        throw new Error('Erreur serveur: ' + response.status);
+      
+      if (!pullResponse.ok) {
+        throw new Error('Erreur lors du Pull: ' + pullResponse.status);
       }
-      const data = await response.json();
-      setSyncResult(data);
-      setActiveTab('resultat');
-      loadStats();
-    } catch (err) {
-      setError('Erreur lors de la synchronisation: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePushPreview = async () => {
-    setPushPreviewLoading(true);
-    setError(null);
-    setPushPreviewData(null);
-    try {
-      const response = await fetch(BACKEND_URL + '/api/manager/sync/push/preview');
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur serveur: ' + response.status);
-      }
-      if (Array.isArray(data)) {
-        setPushPreviewData(data);
-        setActiveTab('push-apercu');
-      } else if (data.error) {
-        throw new Error(data.error);
-      }
-    } catch (err) {
-      setError('Erreur apercu push: ' + err.message);
-    } finally {
-      setPushPreviewLoading(false);
-    }
-  };
-
-  const handlePush = async () => {
-    if (!window.confirm('Voulez-vous envoyer tous les signalements vers Firebase?')) {
-      return;
-    }
-    setPushLoading(true);
-    setError(null);
-    setPushResult(null);
-    try {
-      const response = await fetch(BACKEND_URL + '/api/manager/sync/push', {
+      
+      pullResult = await pullResponse.json();
+      
+      setSyncProgress({ step: 2, message: 'Etape 2/2 : Envoi vers Firebase (Push)...' });
+      
+      const pushResponse = await fetch(BACKEND_URL + '/api/manager/sync/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      if (!response.ok) {
-        throw new Error('Erreur serveur: ' + response.status);
+      
+      if (!pushResponse.ok) {
+        throw new Error('Erreur lors du Push: ' + pushResponse.status);
       }
-      const data = await response.json();
-      setPushResult(data);
-      setActiveTab('push-resultat');
-      loadStats();
-    } catch (err) {
-      setError('Erreur envoi Firebase: ' + err.message);
-    } finally {
-      setPushLoading(false);
-    }
-  };
+      
+      pushResult = await pushResponse.json();
 
-  const handlePushSingle = async (signalementId) => {
-    if (!window.confirm('Envoyer le signalement ' + signalementId + ' vers Firebase?')) {
-      return;
-    }
-    try {
-      const response = await fetch(BACKEND_URL + '/api/manager/sync/push/' + signalementId, {
-        method: 'POST'
+      setSyncResult({
+        success: true,
+        pull: pullResult,
+        push: pushResult,
+        timestamp: new Date().toISOString()
       });
-      const data = await response.json();
-      if (data.success) {
-        alert('Signalement envoye avec succes!');
-        handlePushPreview();
-      } else {
-        alert('Erreur: ' + data.message);
-      }
+
+      loadStats();
+
     } catch (err) {
-      alert('Erreur: ' + err.message);
+      setError('Erreur synchronisation: ' + err.message);
+      setSyncResult({
+        success: false,
+        pull: pullResult,
+        push: pushResult,
+        error: err.message,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      setSyncing(false);
+      setSyncProgress(null);
     }
   };
 
@@ -163,24 +99,6 @@ const SyncPage = () => {
     });
   };
 
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      'nouveau': { label: 'Nouveau', className: 'status-nouveau' },
-      'en_cours': { label: 'En cours', className: 'status-en-cours' },
-      'traite': { label: 'Traite', className: 'status-traite' },
-      'rejete': { label: 'Rejete', className: 'status-rejete' }
-    };
-    const info = statusMap[status] || { label: status || 'Inconnu', className: 'status-unknown' };
-    return <span className={'status-badge ' + info.className}>{info.label}</span>;
-  };
-
-  const getSourceBadge = (source) => {
-    if (source === 'local') {
-      return <span className="source-badge source-local">Local</span>;
-    }
-    return <span className="source-badge source-firebase">Firebase</span>;
-  };
-
   return (
     <div className="sync-page">
       <div className="sync-header">
@@ -188,29 +106,14 @@ const SyncPage = () => {
           Retour
         </button>
         <h1>Synchronisation Firebase</h1>
-        <p>Synchronisation bidirectionnelle avec Firebase</p>
-      </div>
-
-      <div className="section-tabs">
-        <button 
-          className={'section-tab ' + (activeSection === 'pull' ? 'active' : '')}
-          onClick={() => { setActiveSection('pull'); setActiveTab('apercu'); }}
-        >
-          Recuperer (Pull)
-        </button>
-        <button 
-          className={'section-tab ' + (activeSection === 'push' ? 'active' : '')}
-          onClick={() => { setActiveSection('push'); setActiveTab('push-apercu'); }}
-        >
-          Envoyer (Push)
-        </button>
+        <p>Synchronisation automatique bidirectionnelle avec Firebase</p>
       </div>
 
       {stats && (
         <div className="stats-section">
           <h3>Statistiques locales</h3>
           <div className="stats-cards">
-            <div className="stat-card">
+            <div className="stat-card total">
               <div className="stat-number">{stats.total || 0}</div>
               <div className="stat-label">Total synchronises</div>
             </div>
@@ -230,342 +133,120 @@ const SyncPage = () => {
         </div>
       )}
 
+      <div className="sync-action-section">
+        <div className="sync-description">
+          <h2>Synchronisation complete</h2>
+          <p>Ce bouton effectue automatiquement :</p>
+          <ul>
+            <li><strong>Pull :</strong> Recupere les nouveaux signalements depuis Firebase</li>
+            <li><strong>Push :</strong> Envoie les signalements traites vers Firebase</li>
+          </ul>
+        </div>
+
+        <button 
+          className={'main-sync-button ' + (syncing ? 'syncing' : '')}
+          onClick={handleFullSync}
+          disabled={syncing}
+        >
+          {syncing ? 'Synchronisation en cours...' : 'Synchroniser maintenant'}
+        </button>
+
+        {syncProgress && (
+          <div className="sync-progress">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: syncProgress.step === 1 ? '50%' : '100%' }}
+              ></div>
+            </div>
+            <p className="progress-message">{syncProgress.message}</p>
+          </div>
+        )}
+      </div>
+
       {error && (
         <div className="error-message">
           {error}
         </div>
       )}
 
-      {activeSection === 'pull' && (
-        <>
-          <div className="section-header">
-            <h2>Recuperer depuis Firebase</h2>
-            <p>Telecharger les signalements de application mobile vers la base locale</p>
-          </div>
-
-          <div className="action-buttons">
-            <button 
-              className="preview-button"
-              onClick={handlePreview}
-              disabled={previewLoading}
-            >
-              {previewLoading ? 'Chargement...' : 'Apercu Firebase'}
-            </button>
-            
-            <button 
-              className="sync-button"
-              onClick={handleSync}
-              disabled={loading}
-            >
-              {loading ? 'Synchronisation...' : 'Synchroniser maintenant'}
-            </button>
-          </div>
-
-          <div className="tabs">
-            <button 
-              className={'tab ' + (activeTab === 'apercu' ? 'active' : '')}
-              onClick={() => setActiveTab('apercu')}
-            >
-              Apercu Firebase
-            </button>
-            <button 
-              className={'tab ' + (activeTab === 'resultat' ? 'active' : '')}
-              onClick={() => setActiveTab('resultat')}
-            >
-              Resultat synchronisation
-            </button>
-          </div>
-
-          <div className="tab-content">
-            {activeTab === 'apercu' && previewData && (
-              <div className="preview-section">
-                <h3>{previewData.length} signalement(s) dans Firebase</h3>
-                <div className="signalements-list">
-                  {previewData.map((sig, index) => (
-                    <div key={sig.id || index} className="signalement-card">
-                      <div className="signalement-header">
-                        <span className="signalement-id">#{sig.id ? sig.id.substring(0, 8) : index + 1}</span>
-                        {getStatusBadge(sig.status)}
-                      </div>
-                      <div className="signalement-body">
-                        <div className="info-row">
-                          <span className="label">Probleme:</span>
-                          <span>{sig.problemeNom || sig.problemeId || 'Non defini'}</span>
-                        </div>
-                        <div className="info-row">
-                          <span className="label">Position:</span>
-                          <span>{sig.latitude ? sig.latitude.toFixed(5) : 'N/A'}, {sig.longitude ? sig.longitude.toFixed(5) : 'N/A'}</span>
-                        </div>
-                        <div className="info-row">
-                          <span className="label">Utilisateur:</span>
-                          <span>{sig.userEmail || 'Anonyme'}</span>
-                        </div>
-                        {sig.surface && (
-                          <div className="info-row">
-                            <span className="label">Surface:</span>
-                            <span>{sig.surface} m2</span>
-                          </div>
-                        )}
-                        {sig.description && (
-                          <div className="info-row description">
-                            <span className="label">Description:</span>
-                            <span>{sig.description}</span>
-                          </div>
-                        )}
-                        <div className="info-row">
-                          <span className="label">Date:</span>
-                          <span>{formatDate(sig.dateCreation)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {previewData.length === 0 && (
-                    <div className="empty-message">
-                      Aucun signalement trouve dans Firebase
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'resultat' && syncResult && (
-              <div className="result-section">
-                <div className={'result-banner ' + (syncResult.success ? 'success' : 'error')}>
-                  {syncResult.success ? 'Succes' : 'Erreur'} - {syncResult.message}
-                </div>
-                
-                <div className="result-stats">
-                  <div className="result-stat">
-                    <span className="result-number">{syncResult.totalFirebase || 0}</span>
-                    <span className="result-label">Total Firebase</span>
+      {syncResult && (
+        <div className={'sync-results ' + (syncResult.success ? 'success' : 'partial')}>
+          <h3>
+            {syncResult.success ? 'Synchronisation reussie !' : 'Synchronisation partielle'}
+          </h3>
+          
+          <div className="results-grid">
+            <div className="result-card pull-result">
+              <h4>Pull (Recuperation)</h4>
+              {syncResult.pull ? (
+                <div className="result-details">
+                  <div className="result-item">
+                    <span className="result-label">Total Firebase:</span>
+                    <span className="result-value">{syncResult.pull.totalFirebase || 0}</span>
                   </div>
-                  <div className="result-stat new">
-                    <span className="result-number">{syncResult.nouveaux || 0}</span>
-                    <span className="result-label">Nouveaux</span>
+                  <div className="result-item success">
+                    <span className="result-label">Nouveaux:</span>
+                    <span className="result-value">{syncResult.pull.nouveaux || 0}</span>
                   </div>
-                  <div className="result-stat updated">
-                    <span className="result-number">{syncResult.misAJour || 0}</span>
-                    <span className="result-label">Mis a jour</span>
+                  <div className="result-item">
+                    <span className="result-label">Mis a jour:</span>
+                    <span className="result-value">{syncResult.pull.misAJour || 0}</span>
                   </div>
-                  <div className="result-stat ignored">
-                    <span className="result-number">{syncResult.ignores || 0}</span>
-                    <span className="result-label">Ignores</span>
-                  </div>
-                  <div className="result-stat error">
-                    <span className="result-number">{syncResult.erreurs || 0}</span>
-                    <span className="result-label">Erreurs</span>
+                  <div className="result-item">
+                    <span className="result-label">Ignores:</span>
+                    <span className="result-value">{syncResult.pull.ignores || 0}</span>
                   </div>
                 </div>
+              ) : (
+                <p className="result-error">Non execute</p>
+              )}
+            </div>
 
-                {syncResult.erreursDetails && syncResult.erreursDetails.length > 0 && (
-                  <div className="errors-details">
-                    <h4>Details des erreurs:</h4>
-                    <ul>
-                      {syncResult.erreursDetails.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
+            <div className="result-card push-result">
+              <h4>Push (Envoi)</h4>
+              {syncResult.push ? (
+                <div className="result-details">
+                  <div className="result-item success">
+                    <span className="result-label">Total envoyes:</span>
+                    <span className="result-value">{syncResult.push.totalEnvoyes || 0}</span>
                   </div>
-                )}
-
-                <div className="sync-timestamp">
-                  Synchronise le: {formatDate(syncResult.dateSynchronisation)}
+                  <div className="result-item">
+                    <span className="result-label">Nouveaux:</span>
+                    <span className="result-value">{syncResult.push.nouveaux || 0}</span>
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Mis a jour:</span>
+                    <span className="result-value">{syncResult.push.misAJour || 0}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'apercu' && !previewData && !previewLoading && (
-              <div className="empty-tab">
-                <p>Cliquez sur Apercu Firebase pour voir les signalements disponibles</p>
-              </div>
-            )}
-
-            {activeTab === 'resultat' && !syncResult && (
-              <div className="empty-tab">
-                <p>Aucune synchronisation effectuee. Cliquez sur Synchroniser maintenant</p>
-              </div>
-            )}
+              ) : (
+                <p className="result-error">Non execute</p>
+              )}
+            </div>
           </div>
-        </>
+
+          <div className="sync-timestamp">
+            Synchronise le: {formatDate(syncResult.timestamp)}
+          </div>
+        </div>
       )}
 
-      {activeSection === 'push' && (
-        <>
-          <div className="section-header">
-            <h2>Envoyer vers Firebase</h2>
-            <p>Publier les signalements pour affichage sur application mobile</p>
+      <div className="info-section">
+        <h3>Comment ca marche ?</h3>
+        <div className="info-cards">
+          <div className="info-card">
+            <div className="info-icon">📥</div>
+            <h4>Pull</h4>
+            <p>Recupere les signalements crees par les utilisateurs depuis application mobile Firebase.</p>
           </div>
-
-          <div className="action-buttons">
-            <button 
-              className="preview-button"
-              onClick={handlePushPreview}
-              disabled={pushPreviewLoading}
-            >
-              {pushPreviewLoading ? 'Chargement...' : 'Apercu a envoyer'}
-            </button>
-            
-            <button 
-              className="push-button"
-              onClick={handlePush}
-              disabled={pushLoading}
-            >
-              {pushLoading ? 'Envoi...' : 'Envoyer vers Firebase'}
-            </button>
+          <div className="info-card">
+            <div className="info-icon">📤</div>
+            <h4>Push</h4>
+            <p>Envoie les signalements traites vers Firebase pour affichage mobile.</p>
           </div>
-
-          <div className="tabs">
-            <button 
-              className={'tab ' + (activeTab === 'push-apercu' ? 'active' : '')}
-              onClick={() => setActiveTab('push-apercu')}
-            >
-              Apercu a envoyer
-            </button>
-            <button 
-              className={'tab ' + (activeTab === 'push-resultat' ? 'active' : '')}
-              onClick={() => setActiveTab('push-resultat')}
-            >
-              Resultat envoi
-            </button>
-          </div>
-
-          <div className="tab-content">
-            {activeTab === 'push-apercu' && pushPreviewData && (
-              <div className="preview-section">
-                <h3>{pushPreviewData.length} signalement(s) a envoyer</h3>
-                <div className="signalements-list">
-                  {pushPreviewData.map((sig, index) => (
-                    <div key={sig.id || index} className="signalement-card">
-                      <div className="signalement-header">
-                        <span className="signalement-id">#{sig.id ? sig.id.substring(0, 8) : (sig.localId || index + 1)}</span>
-                        {getStatusBadge(sig.status)}
-                        {getSourceBadge(sig.source)}
-                      </div>
-                      <div className="signalement-body">
-                        <div className="info-row">
-                          <span className="label">Probleme:</span>
-                          <span>{sig.problemeNom || sig.problemeId || 'Non defini'}</span>
-                        </div>
-                        <div className="info-row">
-                          <span className="label">Position:</span>
-                          <span>{sig.latitude ? sig.latitude.toFixed(5) : 'N/A'}, {sig.longitude ? sig.longitude.toFixed(5) : 'N/A'}</span>
-                        </div>
-                        {sig.entrepriseNom && (
-                          <div className="info-row">
-                            <span className="label">Entreprise:</span>
-                            <span>{sig.entrepriseNom}</span>
-                          </div>
-                        )}
-                        {sig.surface && (
-                          <div className="info-row">
-                            <span className="label">Surface:</span>
-                            <span>{sig.surface} m2</span>
-                          </div>
-                        )}
-                        {sig.budget && (
-                          <div className="info-row">
-                            <span className="label">Budget:</span>
-                            <span>{sig.budget} EUR</span>
-                          </div>
-                        )}
-                        {sig.description && (
-                          <div className="info-row description">
-                            <span className="label">Description:</span>
-                            <span>{sig.description}</span>
-                          </div>
-                        )}
-                        <div className="info-row">
-                          <span className="label">Mise a jour:</span>
-                          <span>{formatDate(sig.dateMiseAJour)}</span>
-                        </div>
-                      </div>
-                      <div className="signalement-actions">
-                        <button 
-                          className="push-single-button"
-                          onClick={() => handlePushSingle(sig.id)}
-                          title="Envoyer ce signalement"
-                        >
-                          Envoyer
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {pushPreviewData.length === 0 && (
-                    <div className="empty-message">
-                      Aucun signalement a envoyer
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'push-resultat' && pushResult && (
-              <div className="result-section">
-                <div className={'result-banner ' + (pushResult.success ? 'success' : 'error')}>
-                  {pushResult.success ? 'Succes' : 'Erreur'} - {pushResult.message}
-                </div>
-                
-                <div className="result-stats">
-                  <div className="result-stat">
-                    <span className="result-number">{pushResult.totalEnvoyes || 0}</span>
-                    <span className="result-label">Total envoyes</span>
-                  </div>
-                  <div className="result-stat new">
-                    <span className="result-number">{pushResult.nouveaux || 0}</span>
-                    <span className="result-label">Nouveaux</span>
-                  </div>
-                  <div className="result-stat updated">
-                    <span className="result-number">{pushResult.misAJour || 0}</span>
-                    <span className="result-label">Mis a jour</span>
-                  </div>
-                  <div className="result-stat error">
-                    <span className="result-number">{pushResult.erreurs || 0}</span>
-                    <span className="result-label">Erreurs</span>
-                  </div>
-                </div>
-
-                {pushResult.erreursDetails && pushResult.erreursDetails.length > 0 && (
-                  <div className="errors-details">
-                    <h4>Details des erreurs:</h4>
-                    <ul>
-                      {pushResult.erreursDetails.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {pushResult.signalementsEnvoyes && pushResult.signalementsEnvoyes.length > 0 && (
-                  <div className="sent-list">
-                    <h4>Signalements envoyes:</h4>
-                    <ul>
-                      {pushResult.signalementsEnvoyes.map((id, i) => (
-                        <li key={i}>{id}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="sync-timestamp">
-                  Envoye le: {formatDate(pushResult.datePush)}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'push-apercu' && !pushPreviewData && !pushPreviewLoading && (
-              <div className="empty-tab">
-                <p>Cliquez sur Apercu a envoyer pour voir les signalements a publier</p>
-              </div>
-            )}
-
-            {activeTab === 'push-resultat' && !pushResult && (
-              <div className="empty-tab">
-                <p>Aucun envoi effectue. Cliquez sur Envoyer vers Firebase</p>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,6 +7,7 @@ import com.example.projet.dto.SyncResultDTO;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementFirebaseRepository;
 import com.example.projet.repository.SignalementDetailsRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.database.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,12 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -43,9 +49,15 @@ public class SyncService {
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private static final String SIGNALEMENTS_PATH = "signalements";
     private static final String SIGNALEMENTS_MOBILE_PATH = "signalements_mobile";
+    private static final String FIREBASE_DB_URL = "https://test-8f6f5-default-rtdb.firebaseio.com";
+    
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Synchroniser tous les signalements depuis Firebase Realtime Database vers PostgreSQL
+     * Synchroniser tous les signalements depuis Firebase Realtime Database vers PostgreSQL (via REST API)
      */
     @Transactional
     public SyncResultDTO syncSignalementsFromFirebase() {
@@ -53,164 +65,198 @@ public class SyncService {
         
         List<String> erreurs = new ArrayList<>();
         int[] counts = {0, 0, 0, 0}; // nouveaux, misAJour, ignores, totalFirebase
-        
-        CompletableFuture<SyncResultDTO> future = new CompletableFuture<>();
         List<FirebaseSignalementDTO> signalementsSyncros = new ArrayList<>();
         
-        DatabaseReference signalementsRef = firebaseDatabase.getReference(SIGNALEMENTS_PATH);
-        
-        signalementsRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+        try {
+            // Récupérer les données via REST API
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_PATH + ".json";
+            log.info("📡 Requête REST vers: {}", url);
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(30))
+                    .GET()
+                    .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() != 200) {
+                log.error("❌ Erreur HTTP: {}", response.statusCode());
+                return SyncResultDTO.builder()
+                        .success(false)
+                        .message("Erreur HTTP: " + response.statusCode())
+                        .dateSynchronisation(LocalDateTime.now())
+                        .build();
+            }
+            
+            String jsonResponse = response.body();
+            
+            if (jsonResponse == null || jsonResponse.equals("null") || jsonResponse.isEmpty()) {
+                log.warn("⚠️ Aucune donnée trouvée dans le chemin '{}'", SIGNALEMENTS_PATH);
+                return SyncResultDTO.builder()
+                        .success(true)
+                        .message("Aucun signalement trouvé dans Firebase")
+                        .totalFirebase(0)
+                        .nouveaux(0)
+                        .misAJour(0)
+                        .ignores(0)
+                        .erreurs(0)
+                        .dateSynchronisation(LocalDateTime.now())
+                        .build();
+            }
+            
+            // Parser le JSON
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataMap = objectMapper.readValue(jsonResponse, Map.class);
+            
+            counts[3] = dataMap.size();
+            log.info("📥 {} signalements trouvés dans Firebase Realtime Database", counts[3]);
+            
+            for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
                 try {
-                    if (!dataSnapshot.exists()) {
-                        log.warn("⚠️ Aucune donnée trouvée dans le chemin '{}'", SIGNALEMENTS_PATH);
-                        future.complete(SyncResultDTO.builder()
-                                .success(true)
-                                .message("Aucun signalement trouvé dans Firebase")
-                                .totalFirebase(0)
-                                .nouveaux(0)
-                                .misAJour(0)
-                                .ignores(0)
-                                .erreurs(0)
-                                .dateSynchronisation(LocalDateTime.now())
-                                .build());
-                        return;
-                    }
+                    String firebaseId = entry.getKey();
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> signalementData = (Map<String, Object>) entry.getValue();
                     
-                    counts[3] = (int) dataSnapshot.getChildrenCount();
-                    log.info("📥 {} signalements trouvés dans Firebase Realtime Database", counts[3]);
+                    FirebaseSignalementDTO dto = mapToDTO(firebaseId, signalementData);
+                    signalementsSyncros.add(dto);
                     
-                    for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
-                        try {
-                            FirebaseSignalementDTO dto = mapSnapshotToDTO(childSnapshot);
-                            signalementsSyncros.add(dto);
-                            
-                            // Vérifier si le signalement existe déjà
-                            Optional<SignalementFirebase> existant = signalementFirebaseRepository
-                                    .findByFirebaseId(dto.getId());
-                            
-                            if (existant.isPresent()) {
-                                // Mettre à jour si nécessaire
-                                SignalementFirebase entity = existant.get();
-                                if (shouldUpdate(entity, dto)) {
-                                    updateEntity(entity, dto);
-                                    signalementFirebaseRepository.save(entity);
-                                    counts[1]++; // misAJour
-                                    log.debug("📝 Signalement mis à jour: {}", dto.getId());
-                                } else {
-                                    counts[2]++; // ignores
-                                    log.debug("⏭️ Signalement inchangé, ignoré: {}", dto.getId());
-                                }
-                            } else {
-                                // Créer un nouveau signalement
-                                SignalementFirebase newEntity = createEntity(dto);
-                                signalementFirebaseRepository.save(newEntity);
-                                counts[0]++; // nouveaux
-                                log.debug("✨ Nouveau signalement créé: {}", dto.getId());
-                            }
-                            
-                        } catch (Exception e) {
-                            String erreur = "Erreur sur document " + childSnapshot.getKey() + ": " + e.getMessage();
-                            erreurs.add(erreur);
-                            log.error("❌ {}", erreur);
+                    // Vérifier si le signalement existe déjà
+                    Optional<SignalementFirebase> existant = signalementFirebaseRepository
+                            .findByFirebaseId(dto.getId());
+                    
+                    if (existant.isPresent()) {
+                        // Mettre à jour si nécessaire
+                        SignalementFirebase entity = existant.get();
+                        if (shouldUpdate(entity, dto)) {
+                            updateEntity(entity, dto);
+                            signalementFirebaseRepository.save(entity);
+                            counts[1]++; // misAJour
+                            log.debug("📝 Signalement mis à jour: {}", dto.getId());
+                        } else {
+                            counts[2]++; // ignores
+                            log.debug("⏭️ Signalement inchangé, ignoré: {}", dto.getId());
                         }
+                    } else {
+                        // Créer un nouveau signalement
+                        SignalementFirebase newEntity = createEntity(dto);
+                        signalementFirebaseRepository.save(newEntity);
+                        counts[0]++; // nouveaux
+                        log.debug("✨ Nouveau signalement créé: {}", dto.getId());
                     }
                     
-                    log.info("✅ Synchronisation terminée - Nouveaux: {}, Mis à jour: {}, Ignorés: {}, Erreurs: {}",
-                            counts[0], counts[1], counts[2], erreurs.size());
-                    
-                    future.complete(SyncResultDTO.builder()
-                            .success(true)
-                            .message("Synchronisation réussie")
-                            .totalFirebase(counts[3])
-                            .nouveaux(counts[0])
-                            .misAJour(counts[1])
-                            .ignores(counts[2])
-                            .erreurs(erreurs.size())
-                            .erreursDetails(erreurs.isEmpty() ? null : erreurs)
-                            .dateSynchronisation(LocalDateTime.now())
-                            .signalementsSynchronises(signalementsSyncros)
-                            .build());
-                            
                 } catch (Exception e) {
-                    log.error("❌ Erreur lors du traitement des données: {}", e.getMessage());
-                    future.completeExceptionally(e);
+                    String erreur = "Erreur sur document " + entry.getKey() + ": " + e.getMessage();
+                    erreurs.add(erreur);
+                    log.error("❌ {}", erreur);
                 }
             }
             
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                log.error("❌ Erreur Firebase: {}", databaseError.getMessage());
-                future.completeExceptionally(new RuntimeException(databaseError.getMessage()));
-            }
-        });
-        
-        try {
-            return future.get(60, TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            log.error("❌ Erreur lors de la synchronisation Firebase: {}", e.getMessage());
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            
-            // Message d'erreur plus descriptif
-            String errorMsg;
-            if (e instanceof TimeoutException) {
-                errorMsg = "Timeout - Vérifiez votre connexion Internet et les règles de sécurité Firebase";
-            } else if (e.getCause() != null) {
-                errorMsg = e.getCause().getMessage();
-            } else {
-                errorMsg = e.getMessage();
-            }
+            log.info("✅ Synchronisation terminée - Nouveaux: {}, Mis à jour: {}, Ignorés: {}, Erreurs: {}",
+                    counts[0], counts[1], counts[2], erreurs.size());
             
             return SyncResultDTO.builder()
+                    .success(true)
+                    .message("Synchronisation réussie")
+                    .totalFirebase(counts[3])
+                    .nouveaux(counts[0])
+                    .misAJour(counts[1])
+                    .ignores(counts[2])
+                    .erreurs(erreurs.size())
+                    .erreursDetails(erreurs.isEmpty() ? null : erreurs)
+                    .dateSynchronisation(LocalDateTime.now())
+                    .signalementsSynchronises(signalementsSyncros)
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la synchronisation Firebase: {}", e.getMessage());
+            return SyncResultDTO.builder()
                     .success(false)
-                    .message("Erreur de connexion à Firebase: " + errorMsg)
+                    .message("Erreur de connexion à Firebase: " + e.getMessage())
                     .dateSynchronisation(LocalDateTime.now())
                     .build();
         }
     }
     
     /**
-     * Récupérer les signalements depuis Firebase sans les sauvegarder (aperçu)
+     * Mapper les données JSON en DTO
+     */
+    private FirebaseSignalementDTO mapToDTO(String firebaseId, Map<String, Object> data) {
+        FirebaseSignalementDTO dto = new FirebaseSignalementDTO();
+        dto.setId(firebaseId);
+        
+        if (data.get("latitude") != null) {
+            dto.setLatitude(((Number) data.get("latitude")).doubleValue());
+        }
+        if (data.get("longitude") != null) {
+            dto.setLongitude(((Number) data.get("longitude")).doubleValue());
+        }
+        dto.setProblemeId((String) data.get("problemeId"));
+        dto.setProblemeNom((String) data.get("problemeNom"));
+        dto.setDescription((String) data.get("description"));
+        dto.setStatus((String) data.get("status"));
+        if (data.get("surface") != null) {
+            dto.setSurface(BigDecimal.valueOf(((Number) data.get("surface")).doubleValue()));
+        }
+        if (data.get("budget") != null) {
+            dto.setBudget(BigDecimal.valueOf(((Number) data.get("budget")).doubleValue()));
+        }
+        dto.setPhotoUrl((String) data.get("photoUrl"));
+        dto.setUserId((String) data.get("userId"));
+        dto.setUserEmail((String) data.get("userEmail"));
+        if (data.get("dateCreation") != null) {
+            dto.setDateCreation(((Number) data.get("dateCreation")).longValue());
+        }
+        dto.setEntrepriseId((String) data.get("entrepriseId"));
+        dto.setEntrepriseNom((String) data.get("entrepriseNom"));
+        
+        return dto;
+    }
+    
+    /**
+     * Récupérer les signalements depuis Firebase sans les sauvegarder (aperçu) - via REST API
      */
     public List<FirebaseSignalementDTO> previewSignalementsFromFirebase() throws ExecutionException, InterruptedException {
-        log.info("👀 Aperçu des signalements Firebase Realtime Database...");
-        
-        CompletableFuture<List<FirebaseSignalementDTO>> future = new CompletableFuture<>();
-        
-        DatabaseReference signalementsRef = firebaseDatabase.getReference(SIGNALEMENTS_PATH);
-        
-        signalementsRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                List<FirebaseSignalementDTO> signalements = new ArrayList<>();
-                
-                if (dataSnapshot.exists()) {
-                    for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
-                        try {
-                            signalements.add(mapSnapshotToDTO(childSnapshot));
-                        } catch (Exception e) {
-                            log.warn("Erreur lors du mapping du document {}: {}", childSnapshot.getKey(), e.getMessage());
-                        }
-                    }
-                }
-                
-                log.info("📋 {} signalements récupérés depuis Firebase", signalements.size());
-                future.complete(signalements);
-            }
-            
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                future.completeExceptionally(new RuntimeException(databaseError.getMessage()));
-            }
-        });
+        log.info("👀 Aperçu des signalements Firebase Realtime Database (REST API)...");
         
         try {
-            return future.get(60, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            throw new ExecutionException("Timeout lors de la récupération des données Firebase - Vérifiez votre connexion Internet", e);
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_PATH + ".json";
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(30))
+                    .GET()
+                    .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() != 200) {
+                throw new ExecutionException("Erreur HTTP: " + response.statusCode(), null);
+            }
+            
+            String jsonResponse = response.body();
+            List<FirebaseSignalementDTO> signalements = new ArrayList<>();
+            
+            if (jsonResponse != null && !jsonResponse.equals("null") && !jsonResponse.isEmpty()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = objectMapper.readValue(jsonResponse, Map.class);
+                
+                for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> signalementData = (Map<String, Object>) entry.getValue();
+                        signalements.add(mapToDTO(entry.getKey(), signalementData));
+                    } catch (Exception e) {
+                        log.warn("Erreur lors du mapping du document {}: {}", entry.getKey(), e.getMessage());
+                    }
+                }
+            }
+            
+            log.info("📋 {} signalements récupérés depuis Firebase", signalements.size());
+            return signalements;
+            
+        } catch (Exception e) {
+            throw new ExecutionException("Erreur lors de la récupération des données Firebase: " + e.getMessage(), e);
         }
     }
     
@@ -387,52 +433,91 @@ public class SyncService {
     }
     
     // ============================================================================
-    // PUSH VERS FIREBASE - Envoi des données pour l'affichage mobile
+    // PUSH VERS FIREBASE - Envoi des données pour l'affichage mobile (via REST API)
     // ============================================================================
     
     /**
-     * Tester la connexion et les droits d'écriture Firebase
+     * Tester la connexion et les droits d'écriture Firebase via REST API
      */
     private boolean testFirebaseWriteAccess() {
         try {
-            log.info("🔍 Test des droits d'écriture Firebase...");
-            DatabaseReference testRef = firebaseDatabase.getReference(SIGNALEMENTS_MOBILE_PATH + "/_test_write");
+            log.info("🔍 Test des droits d'écriture Firebase (REST API) sur chemin: {}", SIGNALEMENTS_MOBILE_PATH);
             
-            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            String testUrl = FIREBASE_DB_URL + "/" + SIGNALEMENTS_MOBILE_PATH + "/_test_write.json";
+            log.info("📍 URL de test: {}", testUrl);
             
             Map<String, Object> testData = new HashMap<>();
             testData.put("test", true);
             testData.put("timestamp", System.currentTimeMillis());
             
-            testRef.setValue(testData, (error, ref) -> {
-                if (error != null) {
-                    log.error("❌ Test écriture Firebase échoué: {}", error.getMessage());
-                    future.complete(false);
-                } else {
-                    // Supprimer le test avec CompletionListener
-                    testRef.removeValue((removeError, removeRef) -> {
-                        if (removeError != null) {
-                            log.warn("⚠️ Nettoyage test échoué (non bloquant): {}", removeError.getMessage());
-                        }
-                    });
-                    log.info("✅ Test écriture Firebase réussi");
-                    future.complete(true);
-                }
-            });
+            String jsonData = objectMapper.writeValueAsString(testData);
+            log.info("📤 Envoi des données de test via REST...");
             
-            return future.get(5, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            log.error("❌ Timeout lors du test d'écriture Firebase - Les règles Firebase bloquent probablement l'écriture");
-            return false;
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(testUrl))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonData))
+                    .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                log.info("✅ Test écriture Firebase réussi (status: {})", response.statusCode());
+                
+                // Nettoyer le test
+                HttpRequest deleteRequest = HttpRequest.newBuilder()
+                        .uri(URI.create(testUrl))
+                        .timeout(Duration.ofSeconds(5))
+                        .DELETE()
+                        .build();
+                httpClient.send(deleteRequest, HttpResponse.BodyHandlers.ofString());
+                log.info("🧹 Nettoyage test réussi");
+                
+                return true;
+            } else {
+                log.error("❌ Test écriture Firebase échoué - Status: {}, Body: {}", response.statusCode(), response.body());
+                return false;
+            }
         } catch (Exception e) {
-            log.error("❌ Erreur test écriture Firebase: {}", e.getMessage());
+            log.error("❌ Erreur test écriture Firebase: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Envoyer un signalement vers Firebase via REST API
+     */
+    private boolean pushSignalementViaRest(String key, SignalementPushDTO signalement) {
+        try {
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_MOBILE_PATH + "/" + key + ".json";
+            String jsonData = objectMapper.writeValueAsString(signalement);
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonData))
+                    .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                log.debug("✅ Signalement {} envoyé avec succès", key);
+                return true;
+            } else {
+                log.error("❌ Erreur envoi signalement {} - Status: {}", key, response.statusCode());
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("❌ Erreur envoi signalement {}: {}", key, e.getMessage());
             return false;
         }
     }
 
     /**
      * Envoyer tous les signalements (locaux + Firebase synchronisés) vers Firebase
-     * pour l'affichage sur l'application mobile
+     * pour l'affichage sur l'application mobile (via REST API)
      */
     public PushResultDTO pushAllSignalementsToFirebase() {
         log.info("📤 Début de l'envoi des signalements vers Firebase pour affichage mobile...");
@@ -470,47 +555,30 @@ public class SyncService {
                         .build();
             }
             
-            // 2. Référence vers le nœud Firebase pour les données mobiles
-            DatabaseReference mobileRef = firebaseDatabase.getReference(SIGNALEMENTS_MOBILE_PATH);
-            
-            // 3. Envoyer chaque signalement
+            // 2. Envoyer chaque signalement via REST API
             for (SignalementPushDTO dto : allSignalements) {
                 try {
-                    // Convertir le DTO en Map pour Firebase
-                    Map<String, Object> signalementData = convertToFirebaseMap(dto);
-                    
                     // Générer une clé unique si pas d'ID Firebase
                     String firebaseKey = dto.getId() != null ? dto.getId() : "local_" + dto.getLocalId();
                     
-                    // Envoyer vers Firebase (synchrone avec CompletableFuture)
-                    CompletableFuture<Void> future = new CompletableFuture<>();
+                    // Envoyer vers Firebase via REST
+                    boolean success = pushSignalementViaRest(firebaseKey, dto);
                     
-                    mobileRef.child(firebaseKey).setValue(signalementData, (error, ref) -> {
-                        if (error != null) {
-                            future.completeExceptionally(new RuntimeException(error.getMessage()));
+                    if (success) {
+                        envoyes.add(firebaseKey);
+                        if ("local".equals(dto.getSource())) {
+                            counts[0]++; // nouveau
                         } else {
-                            future.complete(null);
+                            counts[1]++; // mis à jour
                         }
-                    });
-                    
-                    // Attendre la confirmation (timeout 5 secondes par signalement)
-                    future.get(5, TimeUnit.SECONDS);
-                    
-                    envoyes.add(firebaseKey);
-                    if ("local".equals(dto.getSource())) {
-                        counts[0]++; // nouveau
+                        log.debug("✅ Signalement envoyé: {}", firebaseKey);
                     } else {
-                        counts[1]++; // mis à jour
+                        counts[2]++; // erreur
+                        String errMsg = "Erreur envoi " + firebaseKey;
+                        erreurs.add(errMsg);
+                        log.error("❌ {}", errMsg);
                     }
                     
-                    log.debug("✅ Signalement envoyé: {}", firebaseKey);
-                    
-                } catch (TimeoutException e) {
-                    counts[2]++; // erreur
-                    String firebaseKey = dto.getId() != null ? dto.getId() : "local_" + dto.getLocalId();
-                    String errMsg = "Timeout envoi " + firebaseKey + " - Vérifiez les règles Firebase";
-                    erreurs.add(errMsg);
-                    log.error("❌ {}", errMsg);
                 } catch (Exception e) {
                     counts[2]++; // erreur
                     String firebaseKey = dto.getId() != null ? dto.getId() : "local_" + dto.getLocalId();
@@ -522,7 +590,7 @@ public class SyncService {
             
             // 4. Mettre à jour les métadonnées si au moins un envoi réussi
             if (!envoyes.isEmpty()) {
-                updatePushMetadata(mobileRef, envoyes.size());
+                updatePushMetadataViaRest(envoyes.size());
             }
             
             log.info("✅ Push terminé - Nouveaux: {}, Mis à jour: {}, Erreurs: {}", 
@@ -830,19 +898,31 @@ public class SyncService {
     }
     
     /**
-     * Mettre à jour les métadonnées du push
+     * Mettre à jour les métadonnées du push via REST API
      */
-    private void updatePushMetadata(DatabaseReference mobileRef, int totalCount) {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("lastPush", System.currentTimeMillis());
-        metadata.put("totalSignalements", totalCount);
-        metadata.put("source", "manager-web");
-        
-        mobileRef.child("_metadata").setValue(metadata, (error, ref) -> {
-            if (error != null) {
-                log.warn("⚠️ Erreur mise à jour métadonnées: {}", error.getMessage());
-            }
-        });
+    private void updatePushMetadataViaRest(int totalCount) {
+        try {
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_MOBILE_PATH + "/_metadata.json";
+            
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("lastPush", System.currentTimeMillis());
+            metadata.put("totalSignalements", totalCount);
+            metadata.put("source", "manager-web");
+            
+            String jsonData = objectMapper.writeValueAsString(metadata);
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonData))
+                    .build();
+            
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("📊 Métadonnées mises à jour: {} signalements", totalCount);
+        } catch (Exception e) {
+            log.warn("⚠️ Erreur mise à jour métadonnées: {}", e.getMessage());
+        }
     }
     
     // Méthodes utilitaires pour le mapping

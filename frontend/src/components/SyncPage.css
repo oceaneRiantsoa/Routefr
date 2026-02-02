@@ -599,3 +599,260 @@
     text-align: center;
   }
 }
+
+/* ========== NOUVEAU STYLE - Bouton unique de synchronisation ========== */
+
+.sync-action-section {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sync-description {
+  margin-bottom: 25px;
+}
+
+.sync-description h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  color: #64b5f6;
+}
+
+.sync-description p {
+  color: #ccc;
+  margin-bottom: 10px;
+}
+
+.sync-description ul {
+  text-align: left;
+  display: inline-block;
+  color: #aaa;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.sync-description li {
+  margin-bottom: 8px;
+}
+
+.sync-description li strong {
+  color: #64b5f6;
+}
+
+.main-sync-button {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 20px 50px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.main-sync-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 25px rgba(76, 175, 80, 0.5);
+}
+
+.main-sync-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.main-sync-button.syncing {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.4);
+}
+
+.sync-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Progress bar */
+.sync-progress {
+  margin-top: 25px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-message {
+  color: #64b5f6;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* Resultats */
+.sync-results {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sync-results.success {
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.sync-results.partial {
+  border-color: rgba(255, 152, 0, 0.5);
+}
+
+.sync-results h3 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.result-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-card h4 {
+  margin-bottom: 15px;
+  color: #64b5f6;
+  font-size: 1.1rem;
+}
+
+.result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.result-item.success {
+  background: rgba(76, 175, 80, 0.2);
+  border-left: 3px solid #4caf50;
+}
+
+.result-item.error {
+  background: rgba(244, 67, 54, 0.2);
+  border-left: 3px solid #f44336;
+}
+
+.result-label {
+  color: #aaa;
+}
+
+.result-value {
+  font-weight: bold;
+  color: white;
+}
+
+.result-error {
+  color: #f44336;
+  text-align: center;
+  font-style: italic;
+}
+
+.sync-timestamp {
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Info section */
+.info-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 15px;
+  padding: 25px;
+  margin-top: 30px;
+}
+
+.info-section h3 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #64b5f6;
+}
+
+.info-cards {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.info-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.info-card h4 {
+  margin-bottom: 10px;
+  color: #64b5f6;
+}
+
+.info-card p {
+  color: #aaa;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

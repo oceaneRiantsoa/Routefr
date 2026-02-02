@@ -126,10 +126,9 @@ public class SignalementService {
     }
 
     /**
-     * Récupère les statistiques par statut
+     * Récupère les statistiques par statut (signalements locaux + Firebase)
      */
     public Map<String, Long> getStatistiquesByStatut() {
-        List<Object[]> results = repository.countByStatut();
         Map<String, Long> stats = new LinkedHashMap<>();
         
         // Initialiser tous les statuts à 0
@@ -138,15 +137,48 @@ public class SignalementService {
         stats.put("TRAITE", 0L);
         stats.put("REJETE", 0L);
         
-        // Remplir avec les valeurs réelles
-        for (Object[] row : results) {
+        // 1. Compter les signalements locaux (signalement_details)
+        List<Object[]> localResults = repository.countByStatut();
+        for (Object[] row : localResults) {
             Integer idStatut = row[0] != null ? ((Number) row[0]).intValue() : 10;
             Long count = ((Number) row[1]).longValue();
             String code = SignalementDTO.getStatutCode(idStatut);
             stats.put(code, stats.getOrDefault(code, 0L) + count);
         }
         
+        // 2. Compter les signalements Firebase (signalement_firebase)
+        List<Object[]> firebaseResults = firebaseRepository.countByStatusGrouped();
+        for (Object[] row : firebaseResults) {
+            String status = row[0] != null ? row[0].toString() : "nouveau";
+            Long count = ((Number) row[1]).longValue();
+            // Mapper le status Firebase vers le code statut
+            String code = mapFirebaseStatusToCode(status);
+            stats.put(code, stats.getOrDefault(code, 0L) + count);
+        }
+        
         return stats;
+    }
+    
+    /**
+     * Mapper le status Firebase vers le code statut local
+     */
+    private String mapFirebaseStatusToCode(String firebaseStatus) {
+        if (firebaseStatus == null) return "EN_ATTENTE";
+        switch (firebaseStatus.toLowerCase()) {
+            case "en_cours":
+            case "en cours":
+                return "EN_COURS";
+            case "traite":
+            case "traité":
+                return "TRAITE";
+            case "rejete":
+            case "rejeté":
+                return "REJETE";
+            case "nouveau":
+            case "non_traite":
+            default:
+                return "EN_ATTENTE";
+        }
     }
 
     /**
