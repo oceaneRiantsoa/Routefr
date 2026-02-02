@@ -4,8 +4,10 @@ import com.example.projet.dto.EntrepriseDTO;
 import com.example.projet.dto.SignalementDTO;
 import com.example.projet.dto.SignalementUpdateDTO;
 import com.example.projet.entity.SignalementDetails;
+import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.entity.SignalementStatus;
 import com.example.projet.repository.SignalementDetailsRepository;
+import com.example.projet.repository.SignalementFirebaseRepository;
 import com.example.projet.repository.SignalementStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,16 +25,33 @@ import java.util.stream.Collectors;
 public class SignalementService {
 
     private final SignalementDetailsRepository repository;
+    private final SignalementFirebaseRepository firebaseRepository;
     private final SignalementStatusRepository statusRepository;
 
     /**
-     * Récupère tous les signalements pour le manager
+     * Récupère tous les signalements pour le manager (locaux + Firebase)
      */
     public List<SignalementDTO> getAllSignalements() {
+        List<SignalementDTO> allSignalements = new ArrayList<>();
+        
+        // 1. Signalements locaux (signalement_details)
         List<Object[]> results = repository.findAllSignalementsForManager();
-        return results.stream()
+        List<SignalementDTO> localSignalements = results.stream()
                 .map(this::mapToSignalementDTO)
                 .collect(Collectors.toList());
+        allSignalements.addAll(localSignalements);
+        log.debug("📍 Signalements locaux: {}", localSignalements.size());
+        
+        // 2. Signalements Firebase (signalement_firebase)
+        List<SignalementFirebase> firebaseSignalements = firebaseRepository.findAll();
+        List<SignalementDTO> firebaseDTOs = firebaseSignalements.stream()
+                .map(this::mapFirebaseToDTO)
+                .collect(Collectors.toList());
+        allSignalements.addAll(firebaseDTOs);
+        log.debug("🔥 Signalements Firebase: {}", firebaseDTOs.size());
+        
+        log.info("📋 Total signalements (Manager): {}", allSignalements.size());
+        return allSignalements;
     }
 
     /**
@@ -107,10 +126,9 @@ public class SignalementService {
     }
 
     /**
-     * Récupère les statistiques par statut
+     * Récupère les statistiques par statut (signalements locaux + Firebase)
      */
     public Map<String, Long> getStatistiquesByStatut() {
-        List<Object[]> results = repository.countByStatut();
         Map<String, Long> stats = new LinkedHashMap<>();
         
         // Initialiser tous les statuts à 0
@@ -119,15 +137,48 @@ public class SignalementService {
         stats.put("TRAITE", 0L);
         stats.put("REJETE", 0L);
         
-        // Remplir avec les valeurs réelles
-        for (Object[] row : results) {
+        // 1. Compter les signalements locaux (signalement_details)
+        List<Object[]> localResults = repository.countByStatut();
+        for (Object[] row : localResults) {
             Integer idStatut = row[0] != null ? ((Number) row[0]).intValue() : 10;
             Long count = ((Number) row[1]).longValue();
             String code = SignalementDTO.getStatutCode(idStatut);
             stats.put(code, stats.getOrDefault(code, 0L) + count);
         }
         
+        // 2. Compter les signalements Firebase (signalement_firebase)
+        List<Object[]> firebaseResults = firebaseRepository.countByStatusGrouped();
+        for (Object[] row : firebaseResults) {
+            String status = row[0] != null ? row[0].toString() : "nouveau";
+            Long count = ((Number) row[1]).longValue();
+            // Mapper le status Firebase vers le code statut
+            String code = mapFirebaseStatusToCode(status);
+            stats.put(code, stats.getOrDefault(code, 0L) + count);
+        }
+        
         return stats;
+    }
+    
+    /**
+     * Mapper le status Firebase vers le code statut local
+     */
+    private String mapFirebaseStatusToCode(String firebaseStatus) {
+        if (firebaseStatus == null) return "EN_ATTENTE";
+        switch (firebaseStatus.toLowerCase()) {
+            case "en_cours":
+            case "en cours":
+                return "EN_COURS";
+            case "traite":
+            case "traité":
+                return "TRAITE";
+            case "rejete":
+            case "rejeté":
+                return "REJETE";
+            case "nouveau":
+            case "non_traite":
+            default:
+                return "EN_ATTENTE";
+        }
     }
 
     /**
@@ -170,6 +221,71 @@ public class SignalementService {
                 .budgetEstime(row[11] != null ? new BigDecimal(row[11].toString()) : null)
                 .notesManager(row[12] != null ? row[12].toString() : null)
                 .dateModification(row[13] != null ? ((java.sql.Timestamp) row[13]).toLocalDateTime() : null)
+                .idStatut(idStatut)
+                .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
+                .budgetCalcule(budgetCalcule)
+                .build();
+    }
+
+    /**
+     * Convertit une entité SignalementFirebase en DTO
+     */
+    private SignalementDTO mapFirebaseToDTO(SignalementFirebase entity) {
+        // Offset de 10000 pour éviter les conflits d'ID avec les signalements locaux
+        Long dtoId = 10000L + entity.getId();
+        
+        // Mapper le statut Firebase vers les ID de statut locaux
+        Integer idStatut;
+        String status = entity.getStatutLocal() != null ? entity.getStatutLocal() : 
+                       (entity.getStatus() != null ? entity.getStatus() : "nouveau");
+        
+        switch (status.toLowerCase()) {
+            case "en_cours":
+            case "en cours":
+                idStatut = 20;
+                break;
+            case "traite":
+            case "traité":
+                idStatut = 30;
+                break;
+            case "rejete":
+            case "rejeté":
+                idStatut = 40;
+                break;
+            default:
+                idStatut = 10; // nouveau / en_attente
+        }
+        
+        BigDecimal surface = entity.getSurface() != null ? entity.getSurface() : BigDecimal.ZERO;
+        // Estimation du coût par m2 (valeur par défaut si non définie)
+        BigDecimal coutParM2 = BigDecimal.valueOf(28750); // Valeur par défaut
+        BigDecimal budgetCalcule = surface.multiply(coutParM2);
+        
+        // Convertir l'ID entreprise de String à Integer si possible
+        Integer idEntreprise = null;
+        if (entity.getEntrepriseId() != null) {
+            try {
+                idEntreprise = Integer.parseInt(entity.getEntrepriseId());
+            } catch (NumberFormatException e) {
+                log.debug("Impossible de convertir entrepriseId en Integer: {}", entity.getEntrepriseId());
+            }
+        }
+        
+        return SignalementDTO.builder()
+                .id(dtoId)
+                .idSignalement(null) // Pas de correspondance dans signalement_details
+                .latitude(entity.getLatitude())
+                .longitude(entity.getLongitude())
+                .probleme(entity.getProblemeNom())
+                .dateSignalement(entity.getDateCreationFirebase())
+                .surface(surface)
+                .coutParM2(coutParM2)
+                .idEntreprise(idEntreprise)
+                .entrepriseNom(entity.getEntrepriseNom())
+                .commentaires(entity.getDescription())
+                .budgetEstime(entity.getBudgetEstime() != null ? entity.getBudgetEstime() : entity.getBudget())
+                .notesManager(entity.getNotesManager())
+                .dateModification(entity.getDateModificationLocal())
                 .idStatut(idStatut)
                 .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
                 .budgetCalcule(budgetCalcule)

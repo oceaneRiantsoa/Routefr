@@ -65,6 +65,10 @@
   background: linear-gradient(90deg, #27ae60, #2ecc71);
 }
 
+.sync-card::before {
+  background: linear-gradient(90deg, #00bcd4, #009688);
+}
+
 .manager-card:hover {
   transform: translateY(-10px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -132,6 +136,11 @@
 
 .map-card .card-button {
   background: linear-gradient(90deg, #27ae60, #2ecc71);
+  color: white;
+}
+
+.sync-card .card-button {
+  background: linear-gradient(90deg, #00bcd4, #009688);
   color: white;
 }
 

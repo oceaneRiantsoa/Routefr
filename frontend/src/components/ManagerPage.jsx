@@ -14,6 +14,22 @@ const ManagerPage = () => {
       </div>
 
       <div className="manager-cards">
+        {/* Carte Synchronisation Firebase */}
+        <div 
+          className="manager-card sync-card"
+          onClick={() => navigate('/manager/sync')}
+        >
+          <div className="card-icon">🔄</div>
+          <h2>Synchronisation Firebase</h2>
+          <p>Récupérer les signalements en ligne</p>
+          <ul>
+            <li>Aperçu des signalements Firebase</li>
+            <li>Synchronisation vers base locale</li>
+            <li>Statistiques de synchronisation</li>
+          </ul>
+          <button className="card-button">Synchroniser →</button>
+        </div>
+
         <div 
           className="manager-card signalements-card"
           onClick={() => navigate('/manager/signalements')}
