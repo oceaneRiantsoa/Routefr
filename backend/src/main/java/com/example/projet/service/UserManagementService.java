@@ -5,7 +5,6 @@ import com.example.projet.entity.*;
 import com.example.projet.repository.LocalUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +18,12 @@ import java.util.Optional;
 public class UserManagementService {
     
     private final LocalUserRepository userRepository;
+    private final SecuritySettingsService securitySettingsService;
     
-    @Value("${app.auth.max-failed-attempts:3}")
-    private int maxFailedAttempts;
-    
-    // Règle métier: Limite de tentatives
+    // Règle métier: Limite de tentatives - maintenant dynamique depuis la base de données
     @Transactional
     public void checkLoginAttempts(String email) {
+        int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
         
         if (userOpt.isPresent()) {
@@ -45,6 +43,7 @@ public class UserManagementService {
     
     @Transactional
     public void incrementFailedAttempts(String email) {
+        int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
         
         if (userOpt.isPresent()) {
@@ -52,7 +51,7 @@ public class UserManagementService {
             int newAttempts = user.getFailedAttempts() + 1;
             user.setFailedAttempts(newAttempts);
             
-            log.warn("⚠️ Tentative échouée {} pour {}", newAttempts, email);
+            log.warn("⚠️ Tentative échouée {} pour {} (limite: {})", newAttempts, email, maxFailedAttempts);
             
             // Bloquer immédiatement si limite atteinte
             if (newAttempts >= maxFailedAttempts) {
