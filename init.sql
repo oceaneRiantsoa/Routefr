@@ -4,6 +4,9 @@
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- ============================
+-- SUPPRESSION DES OBJETS SI EXISTENT
+-- ============================
 DROP VIEW IF EXISTS vue_recapitulation;
 DROP TABLE IF EXISTS signalement_status;
 DROP TABLE IF EXISTS signalement_details;
@@ -16,12 +19,18 @@ DROP TABLE IF EXISTS local_users;
 DROP TABLE IF EXISTS security_settings;
 DROP TABLE IF EXISTS signalement_firebase;
 
+-- ============================
+-- TABLE : profils
+-- ============================
 CREATE TABLE profils (
     id BIGSERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     id_role_value INT NOT NULL
 );
 
+-- ============================
+-- TABLE : entreprise
+-- ============================
 CREATE TABLE entreprise (
     id BIGSERIAL PRIMARY KEY,
     nom_entreprise VARCHAR(150) NOT NULL,
@@ -29,6 +38,9 @@ CREATE TABLE entreprise (
     contact VARCHAR(100)
 );
 
+-- ============================
+-- TABLE : probleme
+-- ============================
 CREATE TABLE probleme (
     id BIGSERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
@@ -36,13 +48,20 @@ CREATE TABLE probleme (
     cout_par_m2 NUMERIC(12,2) NOT NULL
 );
 
+-- ============================
+-- TABLE : signalement
+-- ============================
 CREATE TABLE signalement (
     id BIGSERIAL PRIMARY KEY,
     idProfils INT NOT NULL,
     datetime_signalement TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_signalement_profils FOREIGN KEY (idProfils) REFERENCES profils(id)
+    CONSTRAINT fk_signalement_profils
+        FOREIGN KEY (idProfils) REFERENCES profils(id)
 );
 
+-- ============================
+-- TABLE : signalement_details (POSTGIS)
+-- ============================
 CREATE TABLE signalement_details (
     id BIGSERIAL PRIMARY KEY,
     id_signalement INT NOT NULL,
@@ -63,6 +82,9 @@ CREATE TABLE signalement_details (
 
 CREATE INDEX idx_signalement_geom ON signalement_details USING GIST (geom);
 
+-- ============================
+-- TABLE : signalement_status
+-- ============================
 CREATE TABLE signalement_status (
     id BIGSERIAL PRIMARY KEY,
     id_signalement INT NOT NULL,
@@ -70,6 +92,9 @@ CREATE TABLE signalement_status (
     CONSTRAINT fk_status_signalement FOREIGN KEY (id_signalement) REFERENCES signalement(id)
 );
 
+-- ============================
+-- TABLE : local_users
+-- ============================
 CREATE TABLE local_users (
     id BIGSERIAL PRIMARY KEY,
     firebase_uid VARCHAR(255) UNIQUE NOT NULL,
@@ -86,6 +111,9 @@ CREATE TABLE local_users (
 CREATE INDEX idx_local_users_email ON local_users(email);
 CREATE INDEX idx_local_users_firebase_uid ON local_users(firebase_uid);
 
+-- ============================
+-- TABLE : user_sessions
+-- ============================
 CREATE TABLE user_sessions (
     id BIGSERIAL PRIMARY KEY,
     firebase_uid VARCHAR(255) NOT NULL,
@@ -102,6 +130,9 @@ CREATE INDEX idx_sessions_token ON user_sessions(session_token);
 CREATE INDEX idx_sessions_firebase_uid ON user_sessions(firebase_uid);
 CREATE INDEX idx_sessions_active ON user_sessions(active);
 
+-- ============================
+-- TABLE : security_settings
+-- ============================
 CREATE TABLE security_settings (
     id BIGSERIAL PRIMARY KEY,
     session_duration INT DEFAULT 30,
@@ -112,6 +143,9 @@ CREATE TABLE security_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ============================
+-- TABLE : signalement_firebase
+-- ============================
 CREATE TABLE signalement_firebase (
     id BIGSERIAL PRIMARY KEY,
     firebase_id VARCHAR(255) UNIQUE NOT NULL,
@@ -140,23 +174,60 @@ CREATE TABLE signalement_firebase (
 CREATE INDEX idx_signalement_firebase_id ON signalement_firebase(firebase_id);
 CREATE INDEX idx_signalement_firebase_geom ON signalement_firebase USING GIST (geom);
 
+-- ============================
+-- VUE : RECAPITULATION
+-- ============================
 CREATE VIEW vue_recapitulation AS
 SELECT
     COUNT(DISTINCT s.id) AS nb_point,
     SUM(sd.surface) AS total_surface,
-    CASE WHEN MIN(st.idStatut) = 20 THEN 20 WHEN MAX(st.idStatut) >= 10 THEN 10 ELSE 1 END AS avancement,
+    CASE
+        WHEN MIN(st.idStatut) = 20 THEN 20
+        WHEN MAX(st.idStatut) >= 10 THEN 10
+        ELSE 1
+    END AS avancement,
     SUM(sd.surface * p.cout_par_m2) AS total_budget
 FROM signalement s
 JOIN signalement_details sd ON sd.id_signalement = s.id
 JOIN probleme p ON p.id = sd.id_probleme
 LEFT JOIN signalement_status st ON st.id_signalement = s.id;
 
+-- ============================
+-- DONNEES D'EXEMPLE
+-- ============================
 INSERT INTO profils (nom, id_role_value) VALUES ('Ocy', 10), ('Rado', 20);
-INSERT INTO entreprise (nom_entreprise, localisation, contact) VALUES ('Colas Madagascar', 'Ankorondrano', '034 12 345 67');
-INSERT INTO probleme (nom, detail, cout_par_m2) VALUES ('Nid de poule', 'Trou sur la chaussee', 50000), ('Route fissuree', 'Fissures importantes', 30000);
-INSERT INTO signalement (idProfils, datetime_signalement) VALUES (1, '2026-01-10 08:30'), (2, '2026-01-12 14:15');
-INSERT INTO signalement_details (id_signalement, id_probleme, surface, id_entreprise, commentaires, geom) VALUES (1, 1, 12.5, 1, 'Pres arret bus', ST_SetSRID(ST_MakePoint(47.5146, -18.8792), 4326)::GEOGRAPHY), (2, 2, 20.0, 1, 'Route fissuree', ST_SetSRID(ST_MakePoint(47.5310, -18.8725), 4326)::GEOGRAPHY);
+
+INSERT INTO entreprise (nom_entreprise, localisation, contact) VALUES
+('Colas Madagascar', 'Ankorondrano', '034 12 345 67'),
+('Ravinala Travaux', 'Ivato', '034 98 765 43');
+
+INSERT INTO probleme (nom, detail, cout_par_m2) VALUES
+('Nid de poule', 'Trou sur la chaussee', 50000),
+('Route fissuree', 'Fissures importantes', 30000),
+('Affaissement', 'Affaissement de la chaussee', 75000);
+
+INSERT INTO signalement (idProfils, datetime_signalement) VALUES
+(1, '2026-01-10 08:30'), (2, '2026-01-12 14:15');
+
+INSERT INTO signalement_details (id_signalement, id_probleme, surface, id_entreprise, commentaires, geom) VALUES
+(1, 1, 12.5, 1, 'Pres arret bus', ST_SetSRID(ST_MakePoint(47.5146, -18.8792), 4326)::GEOGRAPHY),
+(2, 2, 20.0, 1, 'Route fissuree', ST_SetSRID(ST_MakePoint(47.5310, -18.8725), 4326)::GEOGRAPHY);
+
 INSERT INTO signalement_status (id_signalement, idStatut) VALUES (1, 10), (2, 20);
-INSERT INTO local_users (firebase_uid, email, display_name, role, failed_attempts, account_locked) VALUES ('uid_admin_001', 'admin@routefr.com', 'Admin', 'ADMIN', 0, FALSE), ('uid_blocked_001', 'blocked@test.com', 'Bloque 1', 'USER', 5, TRUE), ('uid_blocked_002', 'blocked2@test.com', 'Bloque 2', 'USER', 7, TRUE);
-INSERT INTO security_settings (session_duration, max_login_attempts, lockout_duration, auto_lock_enabled) VALUES (30, 5, 15, TRUE);
-INSERT INTO signalement_firebase (firebase_id, user_id, user_email, latitude, longitude, probleme_nom, description, status, surface, statut_local, geom) VALUES ('-NxFirebase001', 'uid_admin_001', 'admin@routefr.com', -18.8792, 47.5146, 'Nid de poule', 'Test', 'en_attente', 15.5, 'non_traite', ST_SetSRID(ST_MakePoint(47.5146, -18.8792), 4326)::GEOGRAPHY);
+
+-- ============================
+-- DONNEES : local_users (avec compte Manager par defaut)
+-- ============================
+INSERT INTO local_users (firebase_uid, email, display_name, role, failed_attempts, account_locked, created_at) VALUES 
+('uid_manager_default', 'manager@routefr.com', 'Manager Principal', 'MANAGER', 0, FALSE, NOW()),
+('uid_admin_001', 'admin@routefr.com', 'Admin Principal', 'ADMIN', 0, FALSE, NOW()),
+('uid_blocked_001', 'blocked@test.com', 'Utilisateur Bloque 1', 'USER', 5, TRUE, NOW()),
+('uid_blocked_002', 'blocked2@test.com', 'Utilisateur Bloque 2', 'USER', 7, TRUE, NOW());
+
+-- ============================
+-- DONNEES : security_settings
+-- ============================
+INSERT INTO security_settings (session_duration, max_login_attempts, lockout_duration, auto_lock_enabled, updated_at)
+VALUES (60, 5, 15, TRUE, NOW());
+
+-- FIN DU SCRIPT
