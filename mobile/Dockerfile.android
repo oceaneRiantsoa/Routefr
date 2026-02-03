@@ -1,0 +1,37 @@
+# Dockerfile.android
+FROM node:20-bullseye
+
+# Installe Java, Android SDK, Gradle, Capacitor
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk wget unzip git && \
+    npm install -g @capacitor/cli
+
+# Installe Android SDK commandline tools
+ENV ANDROID_SDK_ROOT /sdk
+RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /cmdline-tools.zip && \
+    unzip /cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest && \
+    rm /cmdline-tools.zip
+
+ENV PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator"
+
+# Accepte les licences Android SDK
+RUN yes | sdkmanager --licenses
+
+# Installe les outils et plateformes nécessaires
+RUN sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+WORKDIR /app
+COPY . .
+
+# Désactive l'installation du binaire Cypress (inutile pour build mobile)
+ENV CYPRESS_INSTALL_BINARY=0
+RUN npm install
+RUN npm run build
+RUN npx cap sync android
+
+WORKDIR /app/android
+RUN ./gradlew assembleDebug
+
+# APK générée : /app/android/app/build/outputs/apk/debug/app-debug.apk

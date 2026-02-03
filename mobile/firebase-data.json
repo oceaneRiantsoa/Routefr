@@ -1,0 +1,100 @@
+{
+  "signalements": {
+    "test1": {
+      "id": "test1",
+      "userId": "test_user_id",
+      "userEmail": "test@test.com",
+      "latitude": -18.8792,
+      "longitude": 47.5079,
+      "problemeId": "nid_poule",
+      "problemeNom": "Nid de poule",
+      "description": "Nid de poule important devant la mairie d'Analakely",
+      "status": "nouveau",
+      "surface": 15,
+      "budget": 300000,
+      "dateCreation": 1737331200000
+    },
+    "test2": {
+      "id": "test2",
+      "userId": "test_user_id",
+      "userEmail": "test@test.com",
+      "latitude": -18.8850,
+      "longitude": 47.5150,
+      "problemeId": "affaissement",
+      "problemeNom": "Affaissement",
+      "description": "Affaissement de chaussée près du Lac Anosy",
+      "status": "en_cours",
+      "surface": 50,
+      "budget": 1500000,
+      "dateCreation": 1737244800000
+    }
+  },
+  "types_problemes": {
+    "nid_poule": {
+      "id": "nid_poule",
+      "nom": "Nid de poule",
+      "icone": "🕳️",
+      "description": "Trou dans la chaussée",
+      "priorite": 1,
+      "actif": true
+    },
+    "fissure": {
+      "id": "fissure",
+      "nom": "Fissure",
+      "icone": "⚡",
+      "description": "Fissure ou craquelure",
+      "priorite": 2,
+      "actif": true
+    },
+    "affaissement": {
+      "id": "affaissement",
+      "nom": "Affaissement",
+      "icone": "📉",
+      "description": "Affaissement de la route",
+      "priorite": 1,
+      "actif": true
+    },
+    "inondation": {
+      "id": "inondation",
+      "nom": "Inondation",
+      "icone": "🌊",
+      "description": "Zone inondée",
+      "priorite": 1,
+      "actif": true
+    },
+    "eclairage": {
+      "id": "eclairage",
+      "nom": "Éclairage défaillant",
+      "icone": "💡",
+      "description": "Lampadaire cassé",
+      "priorite": 3,
+      "actif": true
+    }
+  },
+  "entreprises": {
+    "colas": {
+      "id": "colas",
+      "nom": "COLAS Madagascar",
+      "contact": "Direction Tana",
+      "telephone": "+261 20 22 XXX",
+      "specialite": "Routes et voiries",
+      "actif": true
+    },
+    "sogea": {
+      "id": "sogea",
+      "nom": "SOGEA SATOM",
+      "contact": "Bureau Antananarivo",
+      "telephone": "+261 20 22 XXX",
+      "specialite": "Travaux publics",
+      "actif": true
+    },
+    "jirama": {
+      "id": "jirama",
+      "nom": "JIRAMA",
+      "contact": "Service technique",
+      "telephone": "+261 20 22 XXX",
+      "specialite": "Éclairage et réseaux",
+      "actif": true
+    }
+  }
+}

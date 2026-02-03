@@ -1,0 +1,25 @@
+- (fana) Initialisation du projet sur Docker(front web react , front mobile ionic vue js, backend Java Spring-Boot MVC, base postgres, serveur offline car (ville tana + rues, routes))
+
+- (Ioty) Module Authentification 
+    - authentification, inscription, modification info user
+    - reglage du nombre de vie des sessions (par default 3)
+    - pour tentative de connexion excessif blocage
+    - API REST pour reinitialiser le blocage pour un utilisateur donne 
+    - Documentation API via SWAGGER 
+
+- Module Carte(Ocy/Fana)
+    - installation serveur offline(voir pptx de monsieur)
+- Module web (Finoana/Ocy/fana avec dpcker)
+    - survoler un point(un point = un signalement = un probleme)
+    - tableau de recapitulation (voir pptx de mr + conception base)
+    - bouton de synchronisation:
+        - recuperation signalement en ligne (ty mbola tsy atao fa mbola miandry anle mobile )
+        - gestion des signalement(traitement, statut et autres...)
+        - modification statut
+        - renvoi donnees sur mobile (exemple: etat signalement, une entreprise a decide de regler le probleme de la route de soarano donc update dans une table + affichage sur notification)
+- Module Mobile (tout le monde , ho ita eo aloha fa vitaina aloha reo tache reo)
+    - login 
+    - affichage carte
+    - signalement
+    - situation et recap 
+    - filtre 
