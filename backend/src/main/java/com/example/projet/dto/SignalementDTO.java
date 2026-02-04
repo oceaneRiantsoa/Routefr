@@ -38,6 +38,13 @@ public class SignalementDTO {
     private String notesManager;
     private LocalDateTime dateModification;
     
+    // Champs d'avancement
+    private Integer avancementPourcentage;
+    private LocalDateTime dateCreationFirebase;
+    private LocalDateTime dateDebutTravaux;
+    private LocalDateTime dateFinTravaux;
+    private String problemeNom;
+    
     // Budget calculé (surface * cout_par_m2)
     private BigDecimal budgetCalcule;
     private BigDecimal coutParM2;

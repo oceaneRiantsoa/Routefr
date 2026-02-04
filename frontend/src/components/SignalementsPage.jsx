@@ -15,6 +15,13 @@ const STATUTS = {
   40: { code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '🔴' }
 };
 
+// Mapping des avancements
+const AVANCEMENTS = {
+  0: { statut: 'nouveau', libelle: 'Nouveau', color: '#f39c12', icon: '🟡' },
+  50: { statut: 'en_cours', libelle: 'En cours', color: '#3498db', icon: '🔵' },
+  100: { statut: 'termine', libelle: 'Terminé', color: '#27ae60', icon: '🟢' }
+};
+
 // Formatage des nombres
 const formatNumber = (num) => {
   if (num === null || num === undefined) return '-';
@@ -39,6 +46,11 @@ const getStatusInfo = (idStatut) => {
   return STATUTS[idStatut] || STATUTS[10];
 };
 
+// Obtenir l'info d'avancement
+const getAvancementInfo = (pourcentage) => {
+  return AVANCEMENTS[pourcentage] || AVANCEMENTS[0];
+};
+
 const SignalementsPage = () => {
   const navigate = useNavigate();
   const [signalements, setSignalements] = useState([]);
@@ -51,6 +63,7 @@ const SignalementsPage = () => {
   const [statistiques, setStatistiques] = useState({});
   const [entreprises, setEntreprises] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [updatingAvancement, setUpdatingAvancement] = useState(null); // ID du signalement en cours de màj
 
   // Charger les données
   useEffect(() => {
@@ -94,6 +107,28 @@ const SignalementsPage = () => {
   const handleEdit = (signalement) => {
     setSelectedSignalement(signalement);
     setShowModal(true);
+  };
+
+  // Mettre à jour l'avancement d'un signalement
+  const handleUpdateAvancement = async (signalementId, newStatut, pourcentage) => {
+    if (updatingAvancement) return; // Éviter les doubles clics
+    
+    setUpdatingAvancement(signalementId);
+    try {
+      await axios.put(`${API_BASE_URL}/api/manager/signalements/${signalementId}/avancement`, {
+        statut: newStatut,
+        pourcentage: pourcentage
+      });
+      setSuccessMessage(`Avancement mis à jour: ${pourcentage}% (${newStatut})`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      loadData(); // Recharger les données
+    } catch (err) {
+      console.error('Erreur mise à jour avancement:', err);
+      setError('Erreur lors de la mise à jour de l\'avancement');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setUpdatingAvancement(null);
+    }
   };
 
   // Sauvegarder les modifications
@@ -218,16 +253,77 @@ const SignalementsPage = () => {
           <div className="signalements-list">
             {filteredSignalements.map(signalement => {
               const statusInfo = getStatusInfo(signalement.idStatut);
+              const avancement = signalement.avancementPourcentage ?? 0;
+              const avancementInfo = getAvancementInfo(avancement);
               return (
                 <div key={signalement.id} className="signalement-card">
                   <div className="signalement-header">
                     <span className="signalement-id">#{signalement.id}</span>
                     <span 
                       className="status-badge"
-                      style={{ backgroundColor: statusInfo.color }}
+                      style={{ backgroundColor: avancementInfo.color }}
                     >
-                      {statusInfo.libelle}
+                      {avancementInfo.icon} {avancement}%
                     </span>
+                  </div>
+
+                  {/* Barre de progression */}
+                  <div className="avancement-section">
+                    <div className="progress-bar-container">
+                      <div 
+                        className="progress-bar-fill"
+                        style={{ 
+                          width: `${avancement}%`,
+                          backgroundColor: avancementInfo.color
+                        }}
+                      />
+                      <span className="progress-text">{avancement}% - {avancementInfo.libelle}</span>
+                    </div>
+                    
+                    {/* Boutons d'avancement */}
+                    <div className="avancement-buttons">
+                      <button
+                        className={`avancement-btn nouveau ${avancement === 0 ? 'active' : ''}`}
+                        onClick={() => handleUpdateAvancement(signalement.id, 'nouveau', 0)}
+                        disabled={updatingAvancement === signalement.id || avancement === 0}
+                        title="Nouveau (0%)"
+                      >
+                        🟡 0%
+                      </button>
+                      <button
+                        className={`avancement-btn en-cours ${avancement === 50 ? 'active' : ''}`}
+                        onClick={() => handleUpdateAvancement(signalement.id, 'en_cours', 50)}
+                        disabled={updatingAvancement === signalement.id || avancement === 50}
+                        title="En cours (50%)"
+                      >
+                        🔵 50%
+                      </button>
+                      <button
+                        className={`avancement-btn termine ${avancement === 100 ? 'active' : ''}`}
+                        onClick={() => handleUpdateAvancement(signalement.id, 'termine', 100)}
+                        disabled={updatingAvancement === signalement.id || avancement === 100}
+                        title="Terminé (100%)"
+                      >
+                        🟢 100%
+                      </button>
+                    </div>
+
+                    {/* Dates d'avancement */}
+                    <div className="avancement-dates">
+                      <span className="date-item">
+                        📅 Créé: {formatDate(signalement.dateCreationFirebase || signalement.dateSignalement)}
+                      </span>
+                      {signalement.dateDebutTravaux && (
+                        <span className="date-item">
+                          🚧 Début: {formatDate(signalement.dateDebutTravaux)}
+                        </span>
+                      )}
+                      {signalement.dateFinTravaux && (
+                        <span className="date-item">
+                          ✅ Fin: {formatDate(signalement.dateFinTravaux)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="signalement-body">
@@ -240,7 +336,7 @@ const SignalementsPage = () => {
                       </div>
                       <div className="info-row">
                         <span className="info-label">🔧 Problème:</span>
-                        <span className="info-value">{signalement.probleme || '-'}</span>
+                        <span className="info-value">{signalement.probleme || signalement.problemeNom || '-'}</span>
                       </div>
                       <div className="info-row">
                         <span className="info-label">📅 Date:</span>

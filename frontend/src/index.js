@@ -6,6 +6,7 @@ import MapView from './MapView';
 import ManagerPage from './components/ManagerPage';
 import BlockedUsersPage from './components/BlockedUsersPage';
 import SignalementsPage from './components/SignalementsPage';
+import StatistiquesPage from './components/StatistiquesPage';
 import SyncPage from './components/SyncPage';
 import LoginPage from './components/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -31,6 +32,11 @@ const App = () => {
         <Route path="/manager/signalements" element={
           <ProtectedRoute>
             <SignalementsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/statistiques" element={
+          <ProtectedRoute>
+            <StatistiquesPage />
           </ProtectedRoute>
         } />
         <Route path="/manager/users" element={

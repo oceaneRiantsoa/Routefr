@@ -83,6 +83,22 @@ const ManagerPage = () => {
           <button className="card-button">Accéder →</button>
         </div>
 
+        {/* Carte Statistiques */}
+        <div 
+          className="manager-card stats-card"
+          onClick={() => navigate('/manager/statistiques')}
+        >
+          <div className="card-icon">📊</div>
+          <h2>Statistiques & Avancement</h2>
+          <p>Analyser les performances de traitement</p>
+          <ul>
+            <li>Délai moyen de traitement</li>
+            <li>Répartition par statut (0%, 50%, 100%)</li>
+            <li>Délais par type de problème</li>
+          </ul>
+          <button className="card-button">Voir les stats →</button>
+        </div>
+
         <div 
           className="manager-card users-card"
           onClick={() => navigate('/manager/users')}

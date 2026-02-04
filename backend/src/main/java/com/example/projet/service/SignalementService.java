@@ -277,7 +277,9 @@ public class SignalementService {
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .probleme(entity.getProblemeNom())
+                .problemeNom(entity.getProblemeNom())
                 .dateSignalement(entity.getDateCreationFirebase())
+                .dateCreationFirebase(entity.getDateCreationFirebase())
                 .surface(surface)
                 .coutParM2(coutParM2)
                 .idEntreprise(idEntreprise)
@@ -289,6 +291,10 @@ public class SignalementService {
                 .idStatut(idStatut)
                 .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
                 .budgetCalcule(budgetCalcule)
+                // Champs d'avancement
+                .avancementPourcentage(entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0)
+                .dateDebutTravaux(entity.getDateDebutTravaux())
+                .dateFinTravaux(entity.getDateFinTravaux())
                 .build();
     }
 }

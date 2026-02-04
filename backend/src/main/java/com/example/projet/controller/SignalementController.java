@@ -1,9 +1,13 @@
 package com.example.projet.controller;
 
+import com.example.projet.dto.AvancementDTO;
 import com.example.projet.dto.EntrepriseDTO;
 import com.example.projet.dto.SignalementDTO;
 import com.example.projet.dto.SignalementUpdateDTO;
+import com.example.projet.dto.StatistiquesDTO;
+import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.service.SignalementService;
+import com.example.projet.service.StatistiquesService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +28,7 @@ import java.util.Map;
 public class SignalementController {
 
     private final SignalementService signalementService;
+    private final StatistiquesService statistiquesService;
 
     /**
      * Liste tous les signalements
@@ -112,5 +118,65 @@ public class SignalementController {
         log.info("GET /api/manager/signalements/entreprises - Liste des entreprises");
         List<EntrepriseDTO> entreprises = signalementService.getAllEntreprises();
         return ResponseEntity.ok(entreprises);
+    }
+
+    // ==================== NOUVEAUX ENDPOINTS AVANCEMENT ====================
+
+    /**
+     * Récupère les statistiques complètes avec délais de traitement
+     */
+    @GetMapping("/statistiques/completes")
+    @Operation(summary = "Statistiques complètes", description = "Récupère les statistiques détaillées avec délais moyens de traitement")
+    public ResponseEntity<StatistiquesDTO> getStatistiquesCompletes() {
+        log.info("GET /api/manager/signalements/statistiques/completes - Statistiques complètes");
+        StatistiquesDTO stats = statistiquesService.getStatistiquesCompletes();
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Met à jour l'avancement d'un signalement (0%, 50%, 100%)
+     */
+    @PutMapping("/{id}/avancement")
+    @Operation(summary = "Modifier l'avancement", description = "Met à jour le pourcentage d'avancement et enregistre les dates")
+    public ResponseEntity<?> updateAvancement(
+            @PathVariable Long id,
+            @RequestBody AvancementDTO avancementDTO) {
+        log.info("PUT /api/manager/signalements/{}/avancement - Mise à jour avancement: {}", id, avancementDTO);
+        try {
+            SignalementFirebase updated = statistiquesService.updateAvancement(id, avancementDTO);
+            
+            // Utiliser HashMap car Map.of() n'accepte pas les valeurs null
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Avancement mis à jour");
+            response.put("id", updated.getId());
+            response.put("avancement", updated.getAvancementPourcentage());
+            response.put("status", updated.getStatus());
+            response.put("dateDebutTravaux", updated.getDateDebutTravaux() != null ? updated.getDateDebutTravaux().toString() : null);
+            response.put("dateFinTravaux", updated.getDateFinTravaux() != null ? updated.getDateFinTravaux().toString() : null);
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la mise à jour de l'avancement: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Récupère les statuts d'avancement disponibles
+     */
+    @GetMapping("/avancements")
+    @Operation(summary = "Liste des avancements", description = "Récupère tous les statuts d'avancement possibles")
+    public ResponseEntity<List<Map<String, Object>>> getAvancements() {
+        log.info("GET /api/manager/signalements/avancements - Liste des avancements");
+        List<Map<String, Object>> avancements = Arrays.asList(
+            Map.of("pourcentage", 0, "statut", "nouveau", "libelle", "Nouveau", "color", "#f39c12", "icon", "🟡"),
+            Map.of("pourcentage", 50, "statut", "en_cours", "libelle", "En cours", "color", "#3498db", "icon", "🔵"),
+            Map.of("pourcentage", 100, "statut", "termine", "libelle", "Terminé", "color", "#27ae60", "icon", "🟢")
+        );
+        return ResponseEntity.ok(avancements);
     }
 }

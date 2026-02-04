@@ -106,7 +106,7 @@ public class FirebaseAuthService {
     }
 
     /**
-     * Vérifie si l'exception est due à un problème réseau
+     * Vérifie si l'exception est due à un problème réseau ou de configuration Firebase
      */
     private boolean isNetworkError(Exception e) {
         // Vérifier le type d'exception
@@ -129,7 +129,11 @@ public class FirebaseAuthService {
                message.contains("unknown host") ||
                message.contains("no route to host") ||
                message.contains("connect timed out") ||
-               message.contains("failed to connect");
+               message.contains("failed to connect") ||
+               message.contains("invalid jwt") ||
+               message.contains("invalid_grant") ||
+               message.contains("service account") ||
+               message.contains("access token");
     }
 
     private String loginWithFirebase(LoginRequest request) throws FirebaseAuthException {

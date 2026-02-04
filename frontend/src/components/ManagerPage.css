@@ -204,6 +204,11 @@
   color: white;
 }
 
+.stats-card .card-button {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: white;
+}
+
 .card-button:hover {
   opacity: 0.9;
   transform: scale(1.02);
