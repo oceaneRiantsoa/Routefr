@@ -39,70 +39,40 @@ public class FirebaseAuthService {
     @Autowired(required = false)
     private PasswordEncoder passwordEncoder;
 
-    // INSCRIPTION
-    public UserResponse register(AuthRequest request) throws FirebaseAuthException {
-        log.info("Inscription pour: {}", request.getEmail());
+    // INSCRIPTION - Uniquement en local (sans Firebase)
+    public UserResponse register(AuthRequest request) {
+        log.info("Inscription locale pour: {}", request.getEmail());
         
-        // 1. Créer utilisateur dans Firebase
-        UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-            .setEmail(request.getEmail())
-            .setPassword(request.getPassword())
-            .setDisplayName(request.getDisplayName())
-            .setDisabled(false);
-        
-        UserRecord userRecord = firebaseAuth.createUser(createRequest);
-        log.info("Utilisateur créé dans Firebase: {}", userRecord.getUid());
-        
-        // 2. Ajouter des claims personnalisés (rôle)
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", "USER"); // Par défaut
-        
-        firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
-        
-        // 3. Créer enregistrement local pour règles métier + stocker le hash du mot de passe
-        userManagementService.createLocalUserWithPassword(
-            userRecord.getUid(),
+        // Créer utilisateur uniquement en local
+        LocalUser localUser = userManagementService.createLocalUserOnly(
             request.getEmail(),
             request.getDisplayName(),
-            passwordEncoder.encode(request.getPassword())
+            passwordEncoder.encode(request.getPassword()),
+            request.getPassword(), // Mot de passe en clair temporaire pour sync Firebase
+            "USER"
         );
         
-        // 4. Générer token personnalisé pour client
-        String customToken = firebaseAuth.createCustomToken(userRecord.getUid());
-        
         return UserResponse.builder()
-            .uid(userRecord.getUid())
-            .email(userRecord.getEmail())
-            .displayName(userRecord.getDisplayName())
-            .role("USER")
-            .emailVerified(userRecord.isEmailVerified())
+            .uid(localUser.getFirebaseUid())
+            .email(localUser.getEmail())
+            .displayName(localUser.getDisplayName())
+            .role(localUser.getRole())
+            .emailVerified(false)
             .accountLocked(false)
             .failedAttempts(0)
-            .createdAt(Instant.ofEpochMilli(userRecord.getUserMetadata().getCreationTimestamp()).toString())
+            .createdAt(localUser.getCreatedAt().toString())
             .build();
     }
     
-    // CONNEXION - Toujours essayer Firebase d'abord
-    public String login(LoginRequest request) throws FirebaseAuthException {
-        log.info("Tentative de connexion pour: {}", request.getEmail());
+    // CONNEXION - Uniquement en local (PostgreSQL)
+    public String login(LoginRequest request) {
+        log.info("Tentative de connexion locale pour: {}", request.getEmail());
         
         // 1. Vérifier règles métier (limite tentatives)
         userManagementService.checkLoginAttempts(request.getEmail());
         
-        // 2. Toujours essayer Firebase d'abord
-        try {
-            log.info("Tentative de connexion via Firebase...");
-            return loginWithFirebase(request);
-        } catch (Exception e) {
-            // 3. Si erreur réseau → fallback vers mode local
-            if (isNetworkError(e)) {
-                log.warn("Erreur réseau Firebase, tentative mode hors ligne: {}", e.getMessage());
-                return loginLocally(request);
-            }
-            // 4. Sinon, propager l'erreur (mauvais mot de passe, compte désactivé, etc.)
-            log.error("Erreur Firebase (non réseau): {}", e.getMessage());
-            throw e;
-        }
+        // 2. Authentification locale uniquement
+        return loginLocally(request);
     }
 
     /**
@@ -163,20 +133,20 @@ public class FirebaseAuthService {
     }
 
     private String loginLocally(LoginRequest request) {
-        log.info("Mode hors ligne activé pour: {}", request.getEmail());
+        log.info("Authentification locale pour: {}", request.getEmail());
         
         // Chercher l'utilisateur dans la base locale
         LocalUser localUser = userManagementService.findByEmail(request.getEmail())
-            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé. Vous devez vous connecter au moins une fois avec Internet."));
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé. Veuillez créer un compte."));
         
         // Vérifier si le compte est bloqué
         if (localUser.isAccountLocked()) {
-            throw new RuntimeException("Compte bloqué après 3 tentatives échouées");
+            throw new RuntimeException("Compte bloqué après plusieurs tentatives échouées. Contactez un administrateur.");
         }
         
         // Vérifier si le mot de passe hashé existe
         if (localUser.getPasswordHash() == null || localUser.getPasswordHash().isEmpty()) {
-            throw new RuntimeException("Ce compte n'a jamais été utilisé en ligne. Connectez-vous d'abord avec Internet.");
+            throw new RuntimeException("Mot de passe non configuré pour ce compte.");
         }
         
         // Vérifier le mot de passe

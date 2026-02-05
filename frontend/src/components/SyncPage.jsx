@@ -11,9 +11,15 @@ const SyncPage = () => {
   const [syncResult, setSyncResult] = useState(null);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
+  
+  // État pour la synchronisation des utilisateurs
+  const [usersSyncStatus, setUsersSyncStatus] = useState(null);
+  const [syncingUsers, setSyncingUsers] = useState(false);
+  const [usersSyncResult, setUsersSyncResult] = useState(null);
 
   useEffect(() => {
     loadStats();
+    loadUsersSyncStatus();
   }, []);
 
   const loadStats = async () => {
@@ -25,6 +31,46 @@ const SyncPage = () => {
       }
     } catch (err) {
       console.error('Erreur chargement stats:', err);
+    }
+  };
+
+  const loadUsersSyncStatus = async () => {
+    try {
+      const response = await fetch(BACKEND_URL + '/api/manager/sync/users/status');
+      if (response.ok) {
+        const data = await response.json();
+        setUsersSyncStatus(data);
+      }
+    } catch (err) {
+      console.error('Erreur chargement statut utilisateurs:', err);
+    }
+  };
+
+  const handleSyncUsers = async () => {
+    if (!window.confirm('Synchroniser les utilisateurs vers Firebase?')) {
+      return;
+    }
+
+    setSyncingUsers(true);
+    setUsersSyncResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch(BACKEND_URL + '/api/manager/sync/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      setUsersSyncResult(result);
+      
+      // Recharger le statut
+      loadUsersSyncStatus();
+      
+    } catch (err) {
+      setError('Erreur synchronisation utilisateurs: ' + err.message);
+    } finally {
+      setSyncingUsers(false);
     }
   };
 
@@ -246,6 +292,76 @@ const SyncPage = () => {
             <p>Envoie les signalements traites vers Firebase pour affichage mobile.</p>
           </div>
         </div>
+      </div>
+
+      {/* Section Synchronisation Utilisateurs */}
+      <div className="users-sync-section">
+        <h2>👥 Synchronisation des Utilisateurs</h2>
+        <p>Les comptes créés localement doivent être synchronisés vers Firebase pour fonctionner sur l'application mobile.</p>
+        
+        {usersSyncStatus && (
+          <div className="users-status">
+            <div className="users-count">
+              <span className="count-number">{usersSyncStatus.usersNotSynced || 0}</span>
+              <span className="count-label">utilisateur(s) à synchroniser</span>
+            </div>
+            
+            {usersSyncStatus.users && usersSyncStatus.users.length > 0 && (
+              <div className="users-list">
+                <h4>Utilisateurs en attente :</h4>
+                <table className="users-table">
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Nom</th>
+                      <th>Rôle</th>
+                      <th>Créé le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersSyncStatus.users.map((user, index) => (
+                      <tr key={index}>
+                        <td>{user.email}</td>
+                        <td>{user.displayName || '-'}</td>
+                        <td><span className={`role-badge ${user.role?.toLowerCase()}`}>{user.role}</span></td>
+                        <td>{user.createdAt ? formatDate(user.createdAt) : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        
+        <button 
+          className={`sync-users-button ${syncingUsers ? 'syncing' : ''}`}
+          onClick={handleSyncUsers}
+          disabled={syncingUsers || (usersSyncStatus?.usersNotSynced === 0)}
+        >
+          {syncingUsers ? '⏳ Synchronisation...' : '🔄 Synchroniser les utilisateurs vers Firebase'}
+        </button>
+        
+        {usersSyncResult && (
+          <div className={`users-sync-result ${usersSyncResult.success ? 'success' : 'error'}`}>
+            <h4>{usersSyncResult.success ? '✅ Succès' : '⚠️ Terminé avec erreurs'}</h4>
+            <p>{usersSyncResult.message}</p>
+            <div className="sync-details">
+              <span>📤 Envoyés: {usersSyncResult.pushedToFirebase || 0}</span>
+              {usersSyncResult.errors > 0 && <span>❌ Erreurs: {usersSyncResult.errors}</span>}
+            </div>
+            {usersSyncResult.errorDetails && usersSyncResult.errorDetails.length > 0 && (
+              <div className="error-details">
+                <h5>Détails des erreurs:</h5>
+                <ul>
+                  {usersSyncResult.errorDetails.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

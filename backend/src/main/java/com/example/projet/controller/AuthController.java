@@ -34,9 +34,9 @@ public class AuthController {
     private final SessionService sessionService;
     private final UserManagementService userManagementService;
     
-    // INSCRIPTION
+    // INSCRIPTION - Uniquement en local
     @PostMapping("/register")
-    @Operation(summary = "Inscription utilisateur", description = "Créer un nouveau compte utilisateur avec Firebase")
+    @Operation(summary = "Inscription utilisateur", description = "Créer un nouveau compte utilisateur en local")
     @ApiResponse(responseCode = "201", description = "Inscription réussie")
     @ApiResponse(responseCode = "400", description = "Erreur de validation ou email déjà existant")
     public ResponseEntity<?> register(@Valid @RequestBody AuthRequest request, HttpServletRequest httpRequest) {
@@ -52,69 +52,53 @@ public class AuthController {
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Inscription réussie");
+            response.put("message", "Inscription réussie (local). Synchronisez pour envoyer vers Firebase.");
             response.put("user", user);
             response.put("sessionToken", sessionToken);
+            response.put("syncedToFirebase", false);
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
                     
-        } catch (FirebaseAuthException e) {
+        } catch (Exception e) {
             log.error("Erreur inscription: {}", e.getMessage());
             return ResponseEntity.badRequest()
                 .body(errorResponse("Erreur inscription: " + e.getMessage()));
         }
     }
     
-    // CONNEXION
+    // CONNEXION - Uniquement en local
     @PostMapping("/login")
-    @Operation(summary = "Connexion utilisateur", description = "Authentifier un utilisateur et créer une session")
+    @Operation(summary = "Connexion utilisateur", description = "Authentifier un utilisateur localement")
     @ApiResponse(responseCode = "200", description = "Connexion réussie")
     @ApiResponse(responseCode = "401", description = "Identifiants invalides ou compte bloqué")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
             String customToken = firebaseAuthService.login(request);
             
-            // Vérifier si c'est un token local (mode hors ligne)
-            boolean isOfflineMode = customToken.startsWith("local-token-");
+            // Récupérer l'utilisateur local
+            var localUser = userManagementService.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             
-            String uid;
+            String uid = localUser.getFirebaseUid();
             String email = request.getEmail();
-            String sessionToken;
             
-            if (isOfflineMode) {
-                // Mode hors ligne : récupérer l'UID depuis la base locale
-                var localUser = userManagementService.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Utilisateur local non trouvé"));
-                uid = localUser.getFirebaseUid();
-                
-                // Créer une session locale
-                sessionToken = sessionService.createSession(
-                    uid,
-                    getClientIP(httpRequest),
-                    httpRequest.getHeader("User-Agent")
-                );
-            } else {
-                // Mode en ligne : récupérer l'utilisateur depuis Firebase
-                var userRecord = firebaseAuthService.getUserByEmail(email);
-                uid = userRecord.getUid();
-                email = userRecord.getEmail();
-                
-                // Créer une session
-                sessionToken = sessionService.createSession(
-                    uid,
-                    getClientIP(httpRequest),
-                    httpRequest.getHeader("User-Agent")
-                );
-            }
+            // Créer une session locale
+            String sessionToken = sessionService.createSession(
+                uid,
+                getClientIP(httpRequest),
+                httpRequest.getHeader("User-Agent")
+            );
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", isOfflineMode ? "Connexion locale réussie" : "Connexion réussie");
+            response.put("message", "Connexion réussie");
             response.put("customToken", customToken);
             response.put("sessionToken", sessionToken);
             response.put("uid", uid);
             response.put("email", email);
-            response.put("offlineMode", isOfflineMode);
+            response.put("displayName", localUser.getDisplayName());
+            response.put("role", localUser.getRole());
+            response.put("syncedToFirebase", localUser.getSyncedToFirebase());
             
             return ResponseEntity.ok(response);
             

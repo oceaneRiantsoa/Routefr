@@ -4,10 +4,16 @@ import com.example.projet.dto.FirebaseSignalementDTO;
 import com.example.projet.dto.PushResultDTO;
 import com.example.projet.dto.SignalementPushDTO;
 import com.example.projet.dto.SyncResultDTO;
+import com.example.projet.dto.UserSyncResultDTO;
+import com.example.projet.entity.LocalUser;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementFirebaseRepository;
 import com.example.projet.repository.SignalementDetailsRepository;
+import com.example.projet.repository.LocalUserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.google.firebase.database.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +21,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +52,10 @@ public class SyncService {
     private final FirebaseDatabase firebaseDatabase;
     private final SignalementFirebaseRepository signalementFirebaseRepository;
     private final SignalementDetailsRepository signalementDetailsRepository;
+    private final LocalUserRepository localUserRepository;
+    
+    @Autowired
+    private FirebaseAuth firebaseAuth;
     
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private static final String SIGNALEMENTS_PATH = "signalements";
@@ -989,6 +1000,150 @@ public class SyncService {
             return "debris";
         }
         return "warning";
+    }
+
+    // ==================== SYNCHRONISATION DES UTILISATEURS ====================
+
+    /**
+     * Synchronisation bidirectionnelle des utilisateurs
+     * 1. PUSH : Envoyer les utilisateurs locaux non synchronisés vers Firebase
+     * 2. PULL : Récupérer les utilisateurs Firebase vers local
+     */
+    @Transactional
+    public UserSyncResultDTO syncUsers() {
+        log.info("🔄 Début de la synchronisation des utilisateurs...");
+        
+        int pushedCount = 0;
+        int pulledCount = 0;
+        int errorCount = 0;
+        List<String> errors = new ArrayList<>();
+        boolean firebaseConnectionError = false;
+        
+        // 1. PUSH : Utilisateurs locaux → Firebase
+        List<LocalUser> usersToSync = localUserRepository.findBySyncedToFirebaseFalse();
+        log.info("📤 {} utilisateur(s) à envoyer vers Firebase", usersToSync.size());
+        
+        for (LocalUser localUser : usersToSync) {
+            // Si on a déjà une erreur de connexion Firebase, arrêter les tentatives
+            if (firebaseConnectionError) {
+                errors.add("Synchronisation ignorée pour " + localUser.getEmail() + " (erreur de connexion Firebase)");
+                errorCount++;
+                continue;
+            }
+            
+            try {
+                // Vérifier si le mot de passe en clair est disponible
+                if (localUser.getPasswordPlainTemp() == null || localUser.getPasswordPlainTemp().isEmpty()) {
+                    log.warn("⚠️ Mot de passe en clair non disponible pour {}, impossible de synchroniser vers Firebase", localUser.getEmail());
+                    errors.add("Mot de passe manquant pour " + localUser.getEmail());
+                    errorCount++;
+                    continue;
+                }
+                
+                // Créer l'utilisateur dans Firebase
+                // Utiliser email comme displayName par défaut si null
+                String displayName = localUser.getDisplayName();
+                if (displayName == null || displayName.isEmpty()) {
+                    displayName = localUser.getEmail().split("@")[0]; // Utiliser la partie avant @ comme nom
+                }
+                
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                    .setEmail(localUser.getEmail())
+                    .setPassword(localUser.getPasswordPlainTemp())
+                    .setDisplayName(displayName)
+                    .setDisabled(localUser.isAccountLocked());
+                
+                UserRecord userRecord = firebaseAuth.createUser(createRequest);
+                log.info("✅ Utilisateur créé dans Firebase: {} -> UID: {}", localUser.getEmail(), userRecord.getUid());
+                
+                // Ajouter les claims (rôle)
+                Map<String, Object> claims = new HashMap<>();
+                claims.put("role", localUser.getRole() != null ? localUser.getRole() : "USER");
+                firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
+                
+                // Mettre à jour l'utilisateur local
+                localUser.setFirebaseUid(userRecord.getUid());
+                localUser.setSyncedToFirebase(true);
+                localUser.setFirebaseSyncDate(LocalDateTime.now());
+                localUser.setPasswordPlainTemp(null); // Effacer le mot de passe en clair
+                localUserRepository.save(localUser);
+                
+                pushedCount++;
+                
+            } catch (FirebaseAuthException e) {
+                String errorMessage = e.getMessage() != null ? e.getMessage() : "";
+                
+                // Détecter les erreurs de connexion/authentification Firebase
+                if (errorMessage.contains("Invalid JWT Signature") || 
+                    errorMessage.contains("invalid_grant") ||
+                    errorMessage.contains("Error getting access token")) {
+                    log.error("❌ Erreur de configuration Firebase (clé invalide ou expirée)");
+                    errors.add("⚠️ Clé Firebase invalide ou expirée. Veuillez mettre à jour serviceAccountKey.json");
+                    firebaseConnectionError = true;
+                    errorCount++;
+                    continue;
+                }
+                
+                if (errorMessage.contains("EMAIL_EXISTS")) {
+                    // L'utilisateur existe déjà dans Firebase, récupérer son UID
+                    try {
+                        UserRecord existingUser = firebaseAuth.getUserByEmail(localUser.getEmail());
+                        localUser.setFirebaseUid(existingUser.getUid());
+                        localUser.setSyncedToFirebase(true);
+                        localUser.setFirebaseSyncDate(LocalDateTime.now());
+                        localUser.setPasswordPlainTemp(null);
+                        localUserRepository.save(localUser);
+                        log.info("✅ Utilisateur existant dans Firebase lié: {} -> UID: {}", localUser.getEmail(), existingUser.getUid());
+                        pushedCount++;
+                    } catch (FirebaseAuthException ex) {
+                        log.error("❌ Erreur lors de la récupération de l'utilisateur Firebase: {}", ex.getMessage());
+                        errors.add("Erreur " + localUser.getEmail() + ": " + ex.getMessage());
+                        errorCount++;
+                    }
+                } else {
+                    log.error("❌ Erreur création Firebase pour {}: {}", localUser.getEmail(), e.getMessage());
+                    errors.add("Erreur " + localUser.getEmail() + ": " + e.getMessage());
+                    errorCount++;
+                }
+            }
+        }
+        
+        // 2. PULL : Firebase → Utilisateurs locaux (optionnel - pour nouveaux utilisateurs créés directement dans Firebase)
+        // Cette partie peut être implémentée si nécessaire
+        
+        String finalMessage;
+        if (firebaseConnectionError) {
+            finalMessage = "⚠️ Synchronisation impossible: Clé Firebase invalide. L'authentification locale fonctionne normalement.";
+        } else {
+            finalMessage = String.format("Synchronisation terminée: %d envoyés vers Firebase, %d erreurs", pushedCount, errorCount);
+        }
+        
+        log.info("✅ Synchronisation utilisateurs terminée: {} envoyés, {} récupérés, {} erreurs", 
+                pushedCount, pulledCount, errorCount);
+        
+        return UserSyncResultDTO.builder()
+                .success(errorCount == 0 && !firebaseConnectionError)
+                .message(finalMessage)
+                .pushedToFirebase(pushedCount)
+                .pulledFromFirebase(pulledCount)
+                .errors(errorCount)
+                .errorDetails(errors)
+                .syncDate(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * Récupère le nombre d'utilisateurs non synchronisés
+     */
+    public long countUsersNotSynced() {
+        return localUserRepository.countBySyncedToFirebaseFalse();
+    }
+
+    /**
+     * Récupère la liste des utilisateurs non synchronisés
+     */
+    public List<LocalUser> getUsersNotSynced() {
+        return localUserRepository.findBySyncedToFirebaseFalse();
     }
 }
 

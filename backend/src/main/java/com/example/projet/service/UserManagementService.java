@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -250,5 +252,90 @@ public class UserManagementService {
     @Transactional
     public LocalUser save(LocalUser user) {
         return userRepository.save(user);
+    }
+
+    // ==================== NOUVELLES MÉTHODES POUR AUTH LOCALE ====================
+
+    /**
+     * Créer un utilisateur uniquement en local (sans Firebase)
+     * Le mot de passe en clair est stocké temporairement pour la future sync Firebase
+     */
+    @Transactional
+    public LocalUser createLocalUserOnly(String email, String displayName, String passwordHash, String passwordPlain, String role) {
+        // Vérifier si l'email existe déjà
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Un utilisateur avec cet email existe déjà");
+        }
+        
+        // Générer un UID local temporaire (sera remplacé par l'UID Firebase lors de la sync)
+        String localUid = "local-" + UUID.randomUUID().toString();
+        
+        LocalUser user = LocalUser.builder()
+            .firebaseUid(localUid)
+            .email(email)
+            .displayName(displayName)
+            .passwordHash(passwordHash)
+            .passwordPlainTemp(passwordPlain) // Stocké temporairement pour sync Firebase
+            .role(role != null ? role : "USER")
+            .failedAttempts(0)
+            .accountLocked(false)
+            .syncedToFirebase(false) // Pas encore synchronisé
+            .createdAt(LocalDateTime.now())
+            .build();
+        
+        LocalUser savedUser = userRepository.save(user);
+        log.info("✅ Utilisateur local créé (non synchronisé): {} avec rôle {}", email, role);
+        
+        return savedUser;
+    }
+
+    /**
+     * Récupère tous les utilisateurs non synchronisés avec Firebase
+     */
+    public List<LocalUser> getAllUsersNotSynced() {
+        return userRepository.findBySyncedToFirebaseFalse();
+    }
+
+    /**
+     * Récupère le nombre d'utilisateurs non synchronisés
+     */
+    public long countUsersNotSynced() {
+        return userRepository.countBySyncedToFirebaseFalse();
+    }
+
+    /**
+     * Marquer un utilisateur comme synchronisé avec Firebase
+     */
+    @Transactional
+    public void markUserAsSynced(Long userId, String firebaseUid) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setFirebaseUid(firebaseUid);
+            user.setSyncedToFirebase(true);
+            user.setFirebaseSyncDate(LocalDateTime.now());
+            user.setPasswordPlainTemp(null); // Effacer le mot de passe en clair après sync
+            userRepository.save(user);
+            log.info("✅ Utilisateur {} marqué comme synchronisé avec Firebase UID: {}", user.getEmail(), firebaseUid);
+        });
+    }
+
+    /**
+     * Authentification locale uniquement (sans Firebase)
+     */
+    public Optional<LocalUser> authenticateLocally(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Récupère tous les utilisateurs locaux
+     */
+    public List<LocalUser> getAllLocalUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Trouver un utilisateur par Firebase UID
+     */
+    public Optional<LocalUser> findByFirebaseUid(String firebaseUid) {
+        return userRepository.findByFirebaseUid(firebaseUid);
     }
 }

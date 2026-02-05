@@ -15,6 +15,9 @@ public interface LocalUserRepository extends JpaRepository<LocalUser, Long> {
     Optional<LocalUser> findByEmail(String email);
     Optional<LocalUser> findByFirebaseUid(String firebaseUid);
     boolean existsByEmail(String email);
-   
-
+    
+    // Nouvelles méthodes pour la synchronisation
+    List<LocalUser> findBySyncedToFirebaseFalse();
+    long countBySyncedToFirebaseFalse();
+    List<LocalUser> findBySyncedToFirebaseTrue();
 }

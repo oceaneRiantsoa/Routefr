@@ -4,6 +4,8 @@ import com.example.projet.dto.FirebaseSignalementDTO;
 import com.example.projet.dto.PushResultDTO;
 import com.example.projet.dto.SignalementPushDTO;
 import com.example.projet.dto.SyncResultDTO;
+import com.example.projet.dto.UserSyncResultDTO;
+import com.example.projet.entity.LocalUser;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementFirebaseRepository;
 import com.example.projet.service.SyncService;
@@ -264,6 +266,93 @@ public class SyncController {
         } catch (Exception e) {
             log.error("❌ Erreur lors de la récupération des stats complètes: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ==================== SYNCHRONISATION DES UTILISATEURS ====================
+
+    /**
+     * Synchroniser les utilisateurs locaux vers Firebase
+     * POST /api/manager/sync/users
+     */
+    @PostMapping("/users")
+    @Operation(summary = "Synchroniser utilisateurs", description = "Envoie les utilisateurs locaux non synchronisés vers Firebase")
+    public ResponseEntity<UserSyncResultDTO> syncUsers() {
+        log.info("🔄 Requête de synchronisation des utilisateurs vers Firebase");
+        try {
+            UserSyncResultDTO result = syncService.syncUsers();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la synchronisation des utilisateurs: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(UserSyncResultDTO.builder()
+                            .success(false)
+                            .message("Erreur: " + e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Obtenir le statut des utilisateurs à synchroniser
+     * GET /api/manager/sync/users/status
+     */
+    @GetMapping("/users/status")
+    @Operation(summary = "Statut sync utilisateurs", description = "Récupère le nombre d'utilisateurs non synchronisés")
+    public ResponseEntity<Map<String, Object>> getUsersSyncStatus() {
+        log.info("📊 Requête de statut de synchronisation des utilisateurs");
+        try {
+            long notSynced = syncService.countUsersNotSynced();
+            List<LocalUser> usersNotSynced = syncService.getUsersNotSynced();
+            
+            Map<String, Object> status = new HashMap<>();
+            status.put("usersNotSynced", notSynced);
+            status.put("users", usersNotSynced.stream().map(u -> Map.of(
+                "id", u.getId(),
+                "email", u.getEmail(),
+                "displayName", u.getDisplayName() != null ? u.getDisplayName() : "",
+                "role", u.getRole() != null ? u.getRole() : "USER",
+                "createdAt", u.getCreatedAt() != null ? u.getCreatedAt().toString() : ""
+            )).toList());
+            
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la récupération du statut utilisateurs: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Synchronisation complète (signalements + utilisateurs)
+     * POST /api/manager/sync/all
+     */
+    @PostMapping("/all")
+    @Operation(summary = "Synchronisation complète", description = "Synchronise les signalements et les utilisateurs")
+    public ResponseEntity<Map<String, Object>> syncAll() {
+        log.info("🔄 Requête de synchronisation complète (signalements + utilisateurs)");
+        try {
+            // 1. Sync signalements depuis Firebase
+            SyncResultDTO signalementsPull = syncService.syncSignalementsFromFirebase();
+            
+            // 2. Push signalements vers Firebase
+            PushResultDTO signalementsPush = syncService.pushAllSignalementsToFirebase();
+            
+            // 3. Sync utilisateurs vers Firebase
+            UserSyncResultDTO usersSync = syncService.syncUsers();
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", signalementsPull.isSuccess() && usersSync.isSuccess());
+            result.put("signalementsPull", signalementsPull);
+            result.put("signalementsPush", signalementsPush);
+            result.put("usersSync", usersSync);
+            result.put("message", "Synchronisation complète terminée");
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la synchronisation complète: {}", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Erreur: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 }
