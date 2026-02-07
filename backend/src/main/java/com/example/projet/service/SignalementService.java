@@ -117,6 +117,10 @@ public class SignalementService {
                         .build();
                 statusRepository.save(newStatus);
             }
+            
+            // Note: L'avancement pour les signalements locaux est calculé dynamiquement 
+            // basé sur le statut. Pas de persistance de l'avancement dans signalement_details.
+            log.info("Statut {} mis à jour pour signalement local {}", updateDTO.getIdStatut(), id);
         }
 
         log.info("Signalement {} mis à jour avec statut: {}", id, updateDTO.getIdStatut());
@@ -205,6 +209,9 @@ public class SignalementService {
         BigDecimal budgetCalcule = surface.multiply(coutParM2);
         
         Integer idStatut = row[14] != null ? ((Number) row[14]).intValue() : 10;
+        
+        // Calculer l'avancement basé sur le statut pour les signalements locaux
+        Integer avancementPourcentage = mapStatutToAvancement(idStatut);
 
         return SignalementDTO.builder()
                 .id(((Number) row[0]).longValue())
@@ -224,6 +231,7 @@ public class SignalementService {
                 .idStatut(idStatut)
                 .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
                 .budgetCalcule(budgetCalcule)
+                .avancementPourcentage(avancementPourcentage)
                 .build();
     }
 
@@ -296,5 +304,29 @@ public class SignalementService {
                 .dateDebutTravaux(entity.getDateDebutTravaux())
                 .dateFinTravaux(entity.getDateFinTravaux())
                 .build();
+    }
+    
+    /**
+     * Convertit un statut en pourcentage d'avancement
+     * 10 (EN_ATTENTE) -> 0%
+     * 20 (EN_COURS) -> 50%  
+     * 30 (TRAITE) -> 100%
+     * 40 (REJETE) -> 0%
+     */
+    private Integer mapStatutToAvancement(Integer idStatut) {
+        if (idStatut == null) return null;
+        
+        switch (idStatut) {
+            case 10: // EN_ATTENTE
+                return 0;
+            case 20: // EN_COURS
+                return 50;
+            case 30: // TRAITE
+                return 100;
+            case 40: // REJETE
+                return 0;
+            default:
+                return null; // Ne pas modifier l'avancement pour les statuts inconnus
+        }
     }
 }

@@ -28,9 +28,8 @@ public class UserManagementService {
     // Règle métier: Limite de tentatives
     @Transactional
     public void checkLoginAttempts(String email) {
-        // int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
-        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
+        int maxFailedAttempts = securitySettings.getMaxLoginAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
@@ -39,6 +38,7 @@ public class UserManagementService {
                 throw new RuntimeException("Compte bloqué. Contactez un administrateur.");
             }
             
+            // Vérification : si déjà à la limite, bloquer
             if (user.getFailedAttempts() >= maxFailedAttempts) {
                 user.setAccountLocked(true);
                 userRepository.save(user);
@@ -49,9 +49,8 @@ public class UserManagementService {
     
     @Transactional
     public void incrementFailedAttempts(String email) {
-        // int maxFailedAttempts = securitySettingsService.getMaxLoginAttempts();
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
-        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
+        int maxFailedAttempts = securitySettings.getMaxLoginAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
@@ -60,10 +59,10 @@ public class UserManagementService {
             
             log.warn("⚠️ Tentative échouée {} pour {} (limite: {})", newAttempts, email, maxFailedAttempts);
             
-            // Bloquer immédiatement si limite atteinte
-            if (newAttempts >= maxFailedAttempts) {
+            // Bloquer dès que la limite est atteinte (pas >=, mais ==)
+            if (newAttempts == maxFailedAttempts) {
                 user.setAccountLocked(true);
-                log.error("🔒 Compte {} bloqué après {} tentatives", email, maxFailedAttempts);
+                log.error("🔒 Compte {} bloqué après {} tentatives", email, newAttempts);
             }
             
             userRepository.save(user);

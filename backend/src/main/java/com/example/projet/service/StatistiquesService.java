@@ -3,7 +3,9 @@ package com.example.projet.service;
 import com.example.projet.dto.AvancementDTO;
 import com.example.projet.dto.StatistiquesDTO;
 import com.example.projet.entity.SignalementFirebase;
+import com.example.projet.entity.SignalementStatus;
 import com.example.projet.repository.SignalementFirebaseRepository;
+import com.example.projet.repository.SignalementStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class StatistiquesService {
 
     private final SignalementFirebaseRepository firebaseRepository;
+    private final SignalementStatusRepository statusRepository;
 
     /**
      * Calcule les statistiques complètes avec délais de traitement
@@ -195,16 +198,19 @@ public class StatistiquesService {
         LocalDateTime now = LocalDateTime.now();
         String statut = avancementDTO.getStatut().toLowerCase();
         int pourcentage = avancementDTO.getPourcentage() != null ? avancementDTO.getPourcentage() : 0;
+        int codeStatut;
 
-        // Déterminer le pourcentage selon le statut
-        if (statut.contains("nouveau") || statut.equals("non_traite")) {
+        // Déterminer le pourcentage selon le statut ET le code pour signalement_status
+        if (statut.contains("nouveau") || statut.equals("non_traite") || pourcentage == 0) {
             pourcentage = 0;
+            codeStatut = 10; // EN_ATTENTE
             signalement.setStatus("nouveau");
             // Réinitialiser les dates si retour à nouveau
             signalement.setDateDebutTravaux(null);
             signalement.setDateFinTravaux(null);
-        } else if (statut.contains("cours")) {
+        } else if (statut.contains("cours") || pourcentage == 50) {
             pourcentage = 50;
+            codeStatut = 20; // EN_COURS
             signalement.setStatus("en_cours");
             // Enregistrer la date de début si pas déjà définie
             if (signalement.getDateDebutTravaux() == null) {
@@ -212,8 +218,9 @@ public class StatistiquesService {
             }
             // Effacer la date de fin si on revient en cours
             signalement.setDateFinTravaux(null);
-        } else if (statut.contains("termin") || statut.equals("traite")) {
+        } else if (statut.contains("termin") || statut.equals("traite") || pourcentage == 100) {
             pourcentage = 100;
+            codeStatut = 30; // TERMINE/TRAITE
             signalement.setStatus("termine");
             // Enregistrer la date de fin
             signalement.setDateFinTravaux(now);
@@ -221,10 +228,23 @@ public class StatistiquesService {
             if (signalement.getDateDebutTravaux() == null) {
                 signalement.setDateDebutTravaux(now);
             }
+        } else if (statut.contains("rejet") || statut.equals("rejete")) {
+            pourcentage = 0;
+            codeStatut = 40; // REJETE
+            signalement.setStatus("rejete");
+            // Réinitialiser les dates si rejeté
+            signalement.setDateDebutTravaux(null);
+            signalement.setDateFinTravaux(null);
+        } else {
+            // Par défaut
+            codeStatut = mapPourcentageToStatut(pourcentage);
         }
 
         signalement.setAvancementPourcentage(pourcentage);
         signalement.setDateModificationLocal(now);
+        
+        // Synchroniser avec la table signalement_status
+        updateSignalementStatus(id, codeStatut);
         
         // Ajouter les notes si fournies
         if (avancementDTO.getNotes() != null && !avancementDTO.getNotes().isEmpty()) {
@@ -233,8 +253,48 @@ public class StatistiquesService {
             signalement.setNotesManager(existingNotes.isEmpty() ? newNote : existingNotes + "\n" + newNote);
         }
 
-        log.info("Mise à jour avancement signalement {}: {}% ({})", id, pourcentage, statut);
+        log.info("Mise à jour avancement signalement {}: {}% ({}) - Code statut: {}", id, pourcentage, statut, codeStatut);
         return firebaseRepository.save(signalement);
+    }
+
+    /**
+     * Map pourcentage vers code de statut
+     */
+    private Integer mapPourcentageToStatut(int pourcentage) {
+        if (pourcentage == 0) return 10;        // EN_ATTENTE
+        else if (pourcentage == 50) return 20;  // EN_COURS
+        else if (pourcentage == 100) return 30; // TERMINE/TRAITE
+        else return 10; // Par défaut EN_ATTENTE
+    }
+
+    /**
+     * Met à jour la table signalement_status avec le nouveau code de statut
+     */
+    @Transactional
+    private void updateSignalementStatus(Long signalementId, Integer codeStatut) {
+        try {
+            // Chercher le statut existant
+            Optional<SignalementStatus> existingStatus = statusRepository.findByIdSignalement(signalementId);
+            
+            if (existingStatus.isPresent()) {
+                // Mettre à jour le statut existant
+                SignalementStatus status = existingStatus.get();
+                status.setIdStatut(codeStatut);
+                statusRepository.save(status);
+                log.info("Statut mis à jour pour signalement {}: code {}", signalementId, codeStatut);
+            } else {
+                // Créer un nouveau statut
+                SignalementStatus newStatus = SignalementStatus.builder()
+                    .idSignalement(signalementId.intValue())
+                    .idStatut(codeStatut)
+                    .build();
+                statusRepository.save(newStatus);
+                log.info("Nouveau statut créé pour signalement {}: code {}", signalementId, codeStatut);
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors de la mise à jour du statut pour signalement {}: {}", signalementId, e.getMessage());
+            // Ne pas faire échouer la transaction principale
+        }
     }
 
     /**

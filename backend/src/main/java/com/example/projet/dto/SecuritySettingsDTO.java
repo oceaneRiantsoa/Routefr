@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO pour les paramètres de sécurité
- * DTO pour les paramètres de sécurité configurables
  */
 @Data
 @NoArgsConstructor
@@ -29,6 +28,4 @@ public class SecuritySettingsDTO {
     
     /** Activer/désactiver le blocage automatique */
     private Boolean autoLockEnabled;
-    private int sessionDurationMinutes;  // Durée de vie des sessions en minutes
-    private int maxFailedAttempts;       // Nombre max de tentatives avant blocage
 }
