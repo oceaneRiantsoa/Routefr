@@ -94,8 +94,8 @@ CREATE INDEX idx_signalement_details_geom ON signalement_details USING GIST (geo
 -- Table des statuts des signalements
 CREATE TABLE signalement_status (
     id BIGSERIAL PRIMARY KEY,
-    id_signalement INTEGER,
-    id_statut INTEGER DEFAULT 10,  -- 10=En attente, 20=En cours, 30=Traité, 40=Rejeté
+    id_signalement INTEGER NOT NULL,
+    idstatut INTEGER DEFAULT 10,  -- 10=En attente, 20=En cours, 30=Traité, 40=Rejeté
     
     CONSTRAINT fk_status_signalement 
         FOREIGN KEY (id_signalement) REFERENCES signalement(id)
@@ -175,7 +175,10 @@ CREATE TABLE local_users (
     failed_attempts INTEGER DEFAULT 0,
     account_locked BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP
+    last_login TIMESTAMP,
+    firebase_sync_date TIMESTAMP,                          -- Date dernière synchro Firebase
+    password_plain_temp VARCHAR(255),                      -- Mot de passe temporaire pour sync
+    synced_to_firebase BOOLEAN DEFAULT FALSE               -- Indicateur de synchronisation
 );
 
 -- Index pour local_users
@@ -245,6 +248,12 @@ INSERT INTO probleme (nom, detail, cout_par_m2) VALUES
 INSERT INTO security_settings (session_duration, max_login_attempts, lockout_duration, auto_lock_enabled) 
 VALUES (30, 5, 15, TRUE);
 
+-- Utilisateur test pour les démonstrations
+INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase) 
+VALUES 
+    ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE),
+    ('user-001', 'user@routefr.com', 'User Test', 'USER', FALSE);
+
 -- ============================================================================
 -- SECTION 7: SIGNALEMENTS DE TEST
 -- ============================================================================
@@ -256,7 +265,7 @@ VALUES (1, '2026-01-10 08:30:00');
 INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires) 
 VALUES (1, 1, 1, -18.8792, 47.5146, 12.50, 'Pres arret bus');
 
-INSERT INTO signalement_status (id_signalement, id_statut) 
+INSERT INTO signalement_status (id_signalement, idstatut) 
 VALUES (1, 10);
 
 -- Signalement de test #2
@@ -266,7 +275,7 @@ VALUES (1, '2026-01-12 14:15:00');
 INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires, notes_manager) 
 VALUES (2, 2, 1, -18.8725, 47.5310, 20.00, 'Route fissuree', 'deja traite');
 
-INSERT INTO signalement_status (id_signalement, id_statut) 
+INSERT INTO signalement_status (id_signalement, idstatut) 
 VALUES (2, 30);
 
 -- ============================================================================
@@ -282,8 +291,8 @@ SELECT
     sd.surface,
     (sd.surface * p.cout_par_m2) AS cout_total,
     e.nom_entreprise,
-    ss.id_statut,
-    CASE ss.id_statut
+    ss.idstatut,
+    CASE ss.idstatut
         WHEN 10 THEN 'En attente'
         WHEN 20 THEN 'En cours'
         WHEN 30 THEN 'Traité'
