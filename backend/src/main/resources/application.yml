@@ -7,37 +7,17 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
+    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
-        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
-# Firebase Configuration
+server:
+  port: 8080
+
 firebase:
-  config:
-    path: serviceAccountKey.json
   api:
-    key: AIzaSyB-9oIDJlAiFITWf48-Xlgw4T0ByhjWRV8
-
-# Authentication Configuration
-app:
-  auth:
-    max-failed-attempts: 3
-  session:
-    duration-minutes: 60
-
-# Swagger UI
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /api-docs
-
-# Logging
-logging:
-  level:
-    root: INFO
-    com.example.projet: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
+    key: AIzaSyBsGVCJ8V2pGN2UnZRQBq2mSgk3uxaLo-I
+  database:
+    url: https://test-8f6f5-default-rtdb.firebaseio.com

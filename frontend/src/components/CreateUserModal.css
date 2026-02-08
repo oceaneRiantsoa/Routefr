@@ -1,0 +1,263 @@
+/* frontend/src/components/CreateUserModal.css */
+
+/* Overlay du modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Contenu du modal */
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header du modal */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: white;
+  font-weight: 600;
+}
+
+.close-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 1.8rem;
+  color: white;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Corps du modal */
+.modal-body {
+  padding: 24px;
+}
+
+.modal-description {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  padding: 12px 16px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+/* Alertes */
+.alert {
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* Groupes de formulaire */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.label-icon {
+  font-size: 1rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+/* Actions du modal */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Spinner de chargement */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

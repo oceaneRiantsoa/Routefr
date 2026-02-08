@@ -6,6 +6,10 @@ import MapView from './MapView';
 import ManagerPage from './components/ManagerPage';
 import BlockedUsersPage from './components/BlockedUsersPage';
 import SignalementsPage from './components/SignalementsPage';
+import StatistiquesPage from './components/StatistiquesPage';
+import SyncPage from './components/SyncPage';
+import LoginPage from './components/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
 
 // Application principale avec React Router
@@ -16,10 +20,35 @@ const App = () => {
         {/* Page publique - Carte des signalements */}
         <Route path="/" element={<MapView />} />
         
-        {/* Pages Manager */}
-        <Route path="/manager" element={<ManagerPage />} />
-        <Route path="/manager/signalements" element={<SignalementsPage />} />
-        <Route path="/manager/users" element={<BlockedUsersPage />} />
+        {/* Page de connexion Manager */}
+        <Route path="/manager/login" element={<LoginPage />} />
+        
+        {/* Pages Manager protégées */}
+        <Route path="/manager" element={
+          <ProtectedRoute>
+            <ManagerPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/signalements" element={
+          <ProtectedRoute>
+            <SignalementsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/statistiques" element={
+          <ProtectedRoute>
+            <StatistiquesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/users" element={
+          <ProtectedRoute>
+            <BlockedUsersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/sync" element={
+          <ProtectedRoute>
+            <SyncPage />
+          </ProtectedRoute>
+        } />
         
         {/* Redirection par défaut */}
         <Route path="*" element={<Navigate to="/" replace />} />

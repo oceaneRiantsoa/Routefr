@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -18,13 +20,16 @@ import java.util.Optional;
 public class UserManagementService {
     
     private final LocalUserRepository userRepository;
+    // private final SecuritySettingsService securitySettingsService;
+    
+    // Règle métier: Limite de tentatives - maintenant dynamique depuis la base de données
     private final SecuritySettingsService securitySettings;
     
     // Règle métier: Limite de tentatives
     @Transactional
     public void checkLoginAttempts(String email) {
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
-        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
+        int maxFailedAttempts = securitySettings.getMaxLoginAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
@@ -33,6 +38,7 @@ public class UserManagementService {
                 throw new RuntimeException("Compte bloqué. Contactez un administrateur.");
             }
             
+            // Vérification : si déjà à la limite, bloquer
             if (user.getFailedAttempts() >= maxFailedAttempts) {
                 user.setAccountLocked(true);
                 userRepository.save(user);
@@ -44,19 +50,19 @@ public class UserManagementService {
     @Transactional
     public void incrementFailedAttempts(String email) {
         Optional<LocalUser> userOpt = userRepository.findByEmail(email);
-        int maxFailedAttempts = securitySettings.getMaxFailedAttempts();
+        int maxFailedAttempts = securitySettings.getMaxLoginAttempts();
         
         if (userOpt.isPresent()) {
             LocalUser user = userOpt.get();
             int newAttempts = user.getFailedAttempts() + 1;
             user.setFailedAttempts(newAttempts);
             
-            log.warn("⚠️ Tentative échouée {} pour {}", newAttempts, email);
+            log.warn("⚠️ Tentative échouée {} pour {} (limite: {})", newAttempts, email, maxFailedAttempts);
             
-            // Bloquer immédiatement si limite atteinte
-            if (newAttempts >= maxFailedAttempts) {
+            // Bloquer dès que la limite est atteinte (pas >=, mais ==)
+            if (newAttempts == maxFailedAttempts) {
                 user.setAccountLocked(true);
-                log.error("🔒 Compte {} bloqué après {} tentatives", email, maxFailedAttempts);
+                log.error("🔒 Compte {} bloqué après {} tentatives", email, newAttempts);
             }
             
             userRepository.save(user);
@@ -245,5 +251,90 @@ public class UserManagementService {
     @Transactional
     public LocalUser save(LocalUser user) {
         return userRepository.save(user);
+    }
+
+    // ==================== NOUVELLES MÉTHODES POUR AUTH LOCALE ====================
+
+    /**
+     * Créer un utilisateur uniquement en local (sans Firebase)
+     * Le mot de passe en clair est stocké temporairement pour la future sync Firebase
+     */
+    @Transactional
+    public LocalUser createLocalUserOnly(String email, String displayName, String passwordHash, String passwordPlain, String role) {
+        // Vérifier si l'email existe déjà
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Un utilisateur avec cet email existe déjà");
+        }
+        
+        // Générer un UID local temporaire (sera remplacé par l'UID Firebase lors de la sync)
+        String localUid = "local-" + UUID.randomUUID().toString();
+        
+        LocalUser user = LocalUser.builder()
+            .firebaseUid(localUid)
+            .email(email)
+            .displayName(displayName)
+            .passwordHash(passwordHash)
+            .passwordPlainTemp(passwordPlain) // Stocké temporairement pour sync Firebase
+            .role(role != null ? role : "USER")
+            .failedAttempts(0)
+            .accountLocked(false)
+            .syncedToFirebase(false) // Pas encore synchronisé
+            .createdAt(LocalDateTime.now())
+            .build();
+        
+        LocalUser savedUser = userRepository.save(user);
+        log.info("✅ Utilisateur local créé (non synchronisé): {} avec rôle {}", email, role);
+        
+        return savedUser;
+    }
+
+    /**
+     * Récupère tous les utilisateurs non synchronisés avec Firebase
+     */
+    public List<LocalUser> getAllUsersNotSynced() {
+        return userRepository.findBySyncedToFirebaseFalse();
+    }
+
+    /**
+     * Récupère le nombre d'utilisateurs non synchronisés
+     */
+    public long countUsersNotSynced() {
+        return userRepository.countBySyncedToFirebaseFalse();
+    }
+
+    /**
+     * Marquer un utilisateur comme synchronisé avec Firebase
+     */
+    @Transactional
+    public void markUserAsSynced(Long userId, String firebaseUid) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setFirebaseUid(firebaseUid);
+            user.setSyncedToFirebase(true);
+            user.setFirebaseSyncDate(LocalDateTime.now());
+            user.setPasswordPlainTemp(null); // Effacer le mot de passe en clair après sync
+            userRepository.save(user);
+            log.info("✅ Utilisateur {} marqué comme synchronisé avec Firebase UID: {}", user.getEmail(), firebaseUid);
+        });
+    }
+
+    /**
+     * Authentification locale uniquement (sans Firebase)
+     */
+    public Optional<LocalUser> authenticateLocally(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Récupère tous les utilisateurs locaux
+     */
+    public List<LocalUser> getAllLocalUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Trouver un utilisateur par Firebase UID
+     */
+    public Optional<LocalUser> findByFirebaseUid(String firebaseUid) {
+        return userRepository.findByFirebaseUid(firebaseUid);
     }
 }

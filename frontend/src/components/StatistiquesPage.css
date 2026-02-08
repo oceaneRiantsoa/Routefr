@@ -1,0 +1,437 @@
+/* frontend/src/components/StatistiquesPage.css */
+
+.statistiques-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+  padding: 20px;
+}
+
+/* Header */
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.stats-header h1 {
+  color: white;
+  font-size: 2rem;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.back-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(-5px);
+}
+
+.refresh-button {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a237e;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover {
+  background: white;
+  transform: scale(1.05);
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  color: white;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.error-container {
+  text-align: center;
+  padding: 40px;
+  color: white;
+}
+
+.error-message {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.retry-button {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Counters Section */
+.counters-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto 40px auto;
+}
+
+.counter-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.counter-card:hover {
+  transform: translateY(-5px);
+}
+
+.counter-card.total {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.counter-card.nouveau {
+  border-left: 5px solid #f39c12;
+}
+
+.counter-card.en-cours {
+  border-left: 5px solid #3498db;
+}
+
+.counter-card.termine {
+  border-left: 5px solid #27ae60;
+}
+
+.counter-icon {
+  font-size: 2.5rem;
+}
+
+.counter-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.counter-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.counter-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.counter-card.total .counter-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.counter-percentage {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Progress Ring */
+.progress-ring {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 60px;
+}
+
+.progress-ring svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  fill: none;
+  stroke: #e0e0e0;
+  stroke-width: 3;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.progress-ring-fill.nouveau {
+  stroke: #f39c12;
+}
+
+.progress-ring-fill.en-cours {
+  stroke: #3498db;
+}
+
+.progress-ring-fill.termine {
+  stroke: #27ae60;
+}
+
+/* Délais Section */
+.delais-section {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto 30px auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.delais-section h2 {
+  color: #1a237e;
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+}
+
+.delais-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.delai-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.3s ease;
+}
+
+.delai-card:hover {
+  transform: scale(1.02);
+}
+
+.delai-card-icon {
+  font-size: 2.5rem;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.delai-card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.delai-card-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a237e;
+  line-height: 1;
+}
+
+.delai-card-unit {
+  font-size: 1rem;
+  color: #666;
+  margin-left: 4px;
+}
+
+.delai-card-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin-top: 8px;
+}
+
+.delai-card-desc {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Délais par type */
+.delais-type-section {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto 30px auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.delais-type-section h2 {
+  color: #1a237e;
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+}
+
+.delais-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.delai-item {
+  padding: 12px 0;
+}
+
+.delai-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.delai-type {
+  font-weight: 600;
+  color: #333;
+}
+
+.delai-value {
+  font-weight: 600;
+  color: #1a237e;
+}
+
+.delai-bar-container {
+  height: 24px;
+  background: #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.delai-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  transition: width 0.5s ease;
+  min-width: 20px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.no-data p {
+  margin: 8px 0;
+}
+
+.no-data-hint {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+/* Legend Section */
+.legend-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 30px;
+  max-width: 1200px;
+  margin: 0 auto 30px auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.legend-section h3 {
+  color: #1a237e;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legend-icon {
+  font-size: 1.5rem;
+}
+
+.legend-text {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+/* Footer */
+.stats-footer {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 20px;
+  font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .stats-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .counters-section {
+    grid-template-columns: 1fr;
+  }
+
+  .counter-card {
+    padding: 20px;
+  }
+
+  .delais-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .legend-items {
+    flex-direction: column;
+  }
+}

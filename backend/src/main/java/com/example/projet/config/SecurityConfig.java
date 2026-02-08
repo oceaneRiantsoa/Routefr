@@ -47,6 +47,12 @@ public class SecurityConfig {
                         // Endpoints publics - Carte visiteurs (sans authentification)
                         .requestMatchers("/api/public/**").permitAll()
 
+                        // Endpoints Manager (pour interface web React)
+                        .requestMatchers("/api/sync/**").permitAll()
+                        .requestMatchers("/api/signalements/**").permitAll()
+                        .requestMatchers("/api/manager/**").permitAll()
+                        .requestMatchers("/api/security-settings/**").permitAll()
+
                         // Swagger UI (documentation)
                         .requestMatchers(
                                 "/swagger-ui/**",

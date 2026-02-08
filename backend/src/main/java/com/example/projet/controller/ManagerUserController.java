@@ -42,23 +42,13 @@ public class ManagerUserController {
 	}
 
 	/**
-	 * Récupérer les paramètres de sécurité actuels
-	 * GET /api/manager/settings/security
-	 */
-	@GetMapping("/settings/security")
-	public ResponseEntity<SecuritySettingsDTO> getSecuritySettings() {
-		log.info("📋 Récupération des paramètres de sécurité");
-		return ResponseEntity.ok(securitySettingsService.getSettings());
-	}
-
-	/**
 	 * Mettre à jour les paramètres de sécurité
 	 * PUT /api/manager/settings/security
 	 */
 	@PutMapping("/settings/security")
 	public ResponseEntity<?> updateSecuritySettings(@RequestBody SecuritySettingsDTO settings) {
 		log.info("🔧 Mise à jour des paramètres de sécurité: session={}min, maxTentatives={}", 
-				settings.getSessionDurationMinutes(), settings.getMaxFailedAttempts());
+				settings.getSessionDuration(), settings.getMaxLoginAttempts());
 		try {
 			SecuritySettingsDTO updated = securitySettingsService.updateSettings(settings);
 			return ResponseEntity.ok(updated);
@@ -69,12 +59,11 @@ public class ManagerUserController {
 	}
 
 	/**
-	 * Réinitialiser les paramètres de sécurité aux valeurs par défaut
-	 * POST /api/manager/settings/security/reset
+	 * Récupérer les paramètres de sécurité actuels
+	 * GET /api/manager/settings/security
 	 */
-	@PostMapping("/settings/security/reset")
-	public ResponseEntity<SecuritySettingsDTO> resetSecuritySettings() {
-		log.info("🔄 Réinitialisation des paramètres de sécurité");
-		return ResponseEntity.ok(securitySettingsService.resetToDefaults());
+	@GetMapping("/settings/security")
+	public ResponseEntity<SecuritySettingsDTO> getSecuritySettings() {
+		return ResponseEntity.ok(securitySettingsService.getSettings());
 	}
 }

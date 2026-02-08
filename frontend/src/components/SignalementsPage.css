@@ -452,4 +452,126 @@
     padding: 6px 12px;
     font-size: 0.8rem;
   }
+
+  .avancement-buttons {
+    flex-direction: column;
+  }
+
+  .avancement-dates {
+    flex-direction: column;
+  }
+}
+
+/* ===== SECTION AVANCEMENT ===== */
+.avancement-section {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+/* Barre de progression */
+.progress-bar-container {
+  position: relative;
+  height: 28px;
+  background: #e9ecef;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 14px;
+  transition: width 0.5s ease, background-color 0.3s ease;
+  min-width: 10px;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  text-shadow: 0 0 3px white;
+}
+
+/* Boutons d'avancement */
+.avancement-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.avancement-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.avancement-btn.nouveau {
+  border-color: #f39c12;
+  color: #f39c12;
+}
+
+.avancement-btn.nouveau:hover:not(:disabled),
+.avancement-btn.nouveau.active {
+  background: #f39c12;
+  color: white;
+}
+
+.avancement-btn.en-cours {
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.avancement-btn.en-cours:hover:not(:disabled),
+.avancement-btn.en-cours.active {
+  background: #3498db;
+  color: white;
+}
+
+.avancement-btn.termine {
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.avancement-btn.termine:hover:not(:disabled),
+.avancement-btn.termine.active {
+  background: #27ae60;
+  color: white;
+}
+
+.avancement-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avancement-btn.active {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dates d'avancement */
+.avancement-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.date-item {
+  background: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
 }

@@ -27,7 +27,7 @@ public class SessionService {
     @Transactional
     public String createSession(String firebaseUid, String ipAddress, String userAgent) {
         String sessionToken = UUID.randomUUID().toString();
-        int sessionDurationMinutes = securitySettings.getSessionDurationMinutes();
+        int sessionDurationMinutes = securitySettings.getSettings().getSessionDuration();
         
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusMinutes(sessionDurationMinutes);
@@ -77,7 +77,7 @@ public class SessionService {
      */
     @Transactional
     public void refreshSession(String sessionToken) {
-        int sessionDurationMinutes = securitySettings.getSessionDurationMinutes();
+        int sessionDurationMinutes = securitySettings.getSettings().getSessionDuration();
         sessionRepository.findBySessionToken(sessionToken).ifPresent(session -> {
             session.setExpiresAt(LocalDateTime.now().plusMinutes(sessionDurationMinutes));
             sessionRepository.save(session);
