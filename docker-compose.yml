@@ -38,6 +38,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/route_signalement
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      FIREBASE_API_KEY: AIzaSyBsGVCJ8V2pGN2UnZRQBq2mSgk3uxaLo-I
+      FIREBASE_DATABASE_URL: https://test-8f6f5-default-rtdb.firebaseio.com
     depends_on:
       - db
 

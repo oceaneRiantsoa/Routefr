@@ -1,12 +1,11 @@
-# syntax=docker/dockerfile:1
 FROM maven:3.9.2-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-FROM eclipse-temurin:17-jdk
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/backend.jar .
-COPY --from=build /app/src/main/resources/serviceAccountKey.json .
-CMD ["java", "-jar", "backend.jar"]
+COPY --from=build /app/target/*.jar backend.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "backend.jar"]
