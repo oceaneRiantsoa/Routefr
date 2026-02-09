@@ -1,0 +1,1 @@
+ALTER TABLE signalement_firebase ADD COLUMN IF NOT EXISTS photos TEXT;
