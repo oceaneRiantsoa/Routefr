@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MapView from './MapView';
+import Layout from './components/Layout';
 import ManagerPage from './components/ManagerPage';
 import BlockedUsersPage from './components/BlockedUsersPage';
 import SignalementsPage from './components/SignalementsPage';
@@ -19,37 +20,37 @@ const App = () => {
       <Routes>
         {/* Page publique - Carte des signalements */}
         <Route path="/" element={<MapView />} />
-        
+
         {/* Page de connexion Manager */}
         <Route path="/manager/login" element={<LoginPage />} />
-        
-        {/* Pages Manager protégées */}
+
+        {/* Pages Manager protégées avec Layout */}
         <Route path="/manager" element={
           <ProtectedRoute>
-            <ManagerPage />
+            <Layout><ManagerPage /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/manager/signalements" element={
           <ProtectedRoute>
-            <SignalementsPage />
+            <Layout><SignalementsPage /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/manager/statistiques" element={
           <ProtectedRoute>
-            <StatistiquesPage />
+            <Layout><StatistiquesPage /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/manager/users" element={
           <ProtectedRoute>
-            <BlockedUsersPage />
+            <Layout><BlockedUsersPage /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/manager/sync" element={
           <ProtectedRoute>
-            <SyncPage />
+            <Layout><SyncPage /></Layout>
           </ProtectedRoute>
         } />
-        
+
         {/* Redirection par défaut */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

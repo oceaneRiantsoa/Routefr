@@ -1,137 +1,193 @@
 // frontend/src/components/ManagerPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logout, getCurrentUser } from '../services/authService';
-import CreateUserModal from './CreateUserModal';
+import axios from 'axios';
 import './ManagerPage.css';
+
+const API_BASE_URL = 'http://localhost:8086';
 
 const ManagerPage = () => {
   const navigate = useNavigate();
-  const user = getCurrentUser();
-  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = async () => {
-    if (window.confirm('Voulez-vous vraiment vous déconnecter ?')) {
-      await logout();
-      navigate('/manager/login');
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const [statsRes, signalementsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/manager/signalements/statistiques`),
+        axios.get(`${API_BASE_URL}/api/manager/signalements`)
+      ]);
+
+      const apiStats = statsRes.data;
+      const mappedStats = {
+        total: (apiStats.EN_ATTENTE || 0) + (apiStats.EN_COURS || 0) + (apiStats.TRAITE || 0) + (apiStats.REJETE || 0),
+        enAttente: apiStats.EN_ATTENTE || 0,
+        enCours: apiStats.EN_COURS || 0,
+        traites: apiStats.TRAITE || 0,
+        rejetes: apiStats.REJETE || 0,
+        recentSignalements: signalementsRes.data.slice(0, 5)
+      };
+
+      setStats(mappedStats);
+    } catch (err) {
+      console.error('Erreur chargement dashboard:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUserCreated = (newUser) => {
-    console.log('Nouvel utilisateur créé:', newUser);
-    // Vous pouvez ajouter une notification ou rafraîchir une liste d'utilisateurs ici
+  const formatNumber = (num) => {
+    if (num === null || num === undefined) return '0';
+    return new Intl.NumberFormat('fr-FR').format(num);
+  };
+
+  const getStatusLabel = (idStatut) => {
+    switch(idStatut) {
+      case 30: return 'Traité';
+      case 20: return 'En cours';
+      default: return 'En attente';
+    }
+  };
+
+  const getStatusClass = (idStatut) => {
+    switch(idStatut) {
+      case 30: return 'status-success';
+      case 20: return 'status-info';
+      default: return 'status-warning';
+    }
   };
 
   return (
-    <div className="manager-page">
-      <div className="manager-header">
-        <div className="header-top">
-          <h1>🛠️ Espace Manager</h1>
-          <div className="user-info">
-            <button 
-              className="create-user-button" 
-              onClick={() => setShowCreateUserModal(true)}
-            >
-              ➕ Créer un utilisateur
+    <div className="dashboard">
+      {/* Stats Cards */}
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-value">{loading ? '-' : formatNumber(stats?.total || 0)}</div>
+          <div className="stat-label">Total signalements</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value text-warning">{loading ? '-' : formatNumber(stats?.enAttente || 0)}</div>
+          <div className="stat-label">En attente</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value text-info">{loading ? '-' : formatNumber(stats?.enCours || 0)}</div>
+          <div className="stat-label">En cours</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value text-success">{loading ? '-' : formatNumber(stats?.traites || 0)}</div>
+          <div className="stat-label">Traités</div>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="card">
+        <div className="card-header">
+          <h2>Accès rapide</h2>
+        </div>
+        <div className="card-body">
+          <div className="quick-links">
+            <button className="quick-link" onClick={() => navigate('/manager/sync')}>
+              Synchronisation
             </button>
-            <span className="user-name">👤 {user?.displayName || user?.email || 'Manager'}</span>
-            <button className="logout-button" onClick={handleLogout}>
-              🚪 Déconnexion
+            <button className="quick-link" onClick={() => navigate('/manager/signalements')}>
+              Signalements
+            </button>
+            <button className="quick-link" onClick={() => navigate('/manager/statistiques')}>
+              Statistiques
+            </button>
+            <button className="quick-link" onClick={() => navigate('/manager/users')}>
+              Utilisateurs
+            </button>
+            <button className="quick-link quick-link-secondary" onClick={() => navigate('/')}>
+              Voir la carte
             </button>
           </div>
         </div>
-        <p>Bienvenue dans l'interface de gestion</p>
       </div>
 
-      {/* Modal de création d'utilisateur */}
-      <CreateUserModal
-        isOpen={showCreateUserModal}
-        onClose={() => setShowCreateUserModal(false)}
-        onUserCreated={handleUserCreated}
-      />
-
-      <div className="manager-cards">
-        {/* Carte Synchronisation Firebase */}
-        <div 
-          className="manager-card sync-card"
-          onClick={() => navigate('/manager/sync')}
-        >
-          <div className="card-icon">🔄</div>
-          <h2>Synchronisation Firebase</h2>
-          <p>Récupérer les signalements en ligne</p>
-          <ul>
-            <li>Aperçu des signalements Firebase</li>
-            <li>Synchronisation vers base locale</li>
-            <li>Statistiques de synchronisation</li>
-          </ul>
-          <button className="card-button">Synchroniser →</button>
+      {/* Recent Activity & Progress */}
+      <div className="row-2">
+        <div className="card">
+          <div className="card-header">
+            <h2>Activité récente</h2>
+            <button className="btn-link" onClick={() => navigate('/manager/signalements')}>
+              Voir tout
+            </button>
+          </div>
+          <div className="card-body">
+            {loading ? (
+              <p className="text-muted">Chargement...</p>
+            ) : stats?.recentSignalements?.length > 0 ? (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Problème</th>
+                    <th>Statut</th>
+                    <th>Avancement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentSignalements.map((sig) => (
+                    <tr key={sig.id}>
+                      <td>#{sig.id}</td>
+                      <td>{sig.nomProbleme || '-'}</td>
+                      <td>
+                        <span className={`badge ${getStatusClass(sig.idStatut)}`}>
+                          {getStatusLabel(sig.idStatut)}
+                        </span>
+                      </td>
+                      <td>{sig.avancement != null ? `${sig.avancement}%` : '0%'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-muted">Aucun signalement récent</p>
+            )}
+          </div>
         </div>
 
-        <div 
-          className="manager-card signalements-card"
-          onClick={() => navigate('/manager/signalements')}
-        >
-          <div className="card-icon">🗺️</div>
-          <h2>Gestion des Signalements</h2>
-          <p>Consulter et gérer les signalements routiers</p>
-          <ul>
-            <li>Voir tous les signalements</li>
-            <li>Modifier les informations (surface, budget, entreprise)</li>
-            <li>Changer les statuts</li>
-            <li>Ajouter des notes</li>
-          </ul>
-          <button className="card-button">Accéder →</button>
+        <div className="card">
+          <div className="card-header">
+            <h2>Répartition</h2>
+          </div>
+          <div className="card-body">
+            <div className="progress-list">
+              <div className="progress-item">
+                <div className="progress-label">
+                  <span>Traités</span>
+                  <span>{stats ? Math.round((stats.traites / stats.total) * 100) || 0 : 0}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill bg-success" style={{ width: `${stats ? Math.round((stats.traites / stats.total) * 100) || 0 : 0}%` }}></div>
+                </div>
+              </div>
+              <div className="progress-item">
+                <div className="progress-label">
+                  <span>En cours</span>
+                  <span>{stats ? Math.round((stats.enCours / stats.total) * 100) || 0 : 0}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill bg-info" style={{ width: `${stats ? Math.round((stats.enCours / stats.total) * 100) || 0 : 0}%` }}></div>
+                </div>
+              </div>
+              <div className="progress-item">
+                <div className="progress-label">
+                  <span>En attente</span>
+                  <span>{stats ? Math.round((stats.enAttente / stats.total) * 100) || 0 : 0}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill bg-warning" style={{ width: `${stats ? Math.round((stats.enAttente / stats.total) * 100) || 0 : 0}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Carte Statistiques */}
-        <div 
-          className="manager-card stats-card"
-          onClick={() => navigate('/manager/statistiques')}
-        >
-          <div className="card-icon">📊</div>
-          <h2>Statistiques & Avancement</h2>
-          <p>Analyser les performances de traitement</p>
-          <ul>
-            <li>Délai moyen de traitement</li>
-            <li>Répartition par statut (0%, 50%, 100%)</li>
-            <li>Délais par type de problème</li>
-          </ul>
-          <button className="card-button">Voir les stats →</button>
-        </div>
-
-        <div 
-          className="manager-card users-card"
-          onClick={() => navigate('/manager/users')}
-        >
-          <div className="card-icon">👤</div>
-          <h2>Gestion des Utilisateurs</h2>
-          <p>Gérer les utilisateurs bloqués</p>
-          <ul>
-            <li>Voir les utilisateurs bloqués</li>
-            <li>Débloquer les utilisateurs</li>
-            <li>Consulter l'historique</li>
-          </ul>
-          <button className="card-button">Accéder →</button>
-        </div>
-
-        <div 
-          className="manager-card map-card"
-          onClick={() => navigate('/')}
-        >
-          <div className="card-icon">🌍</div>
-          <h2>Carte des Signalements</h2>
-          <p>Voir la carte interactive</p>
-          <ul>
-            <li>Visualiser tous les points</li>
-            <li>Récapitulatif en temps réel</li>
-            <li>Statistiques globales</li>
-          </ul>
-          <button className="card-button">Voir la carte →</button>
-        </div>
-      </div>
-
-      <div className="manager-footer">
-        <p>© 2026 Route Signalement - Interface Manager</p>
       </div>
     </div>
   );

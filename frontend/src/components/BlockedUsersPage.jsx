@@ -12,7 +12,7 @@ const BlockedUsersPage = () => {
   const [error, setError] = useState(null);
   const [unblocking, setUnblocking] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // Paramètres de sécurité
   const [securitySettings, setSecuritySettings] = useState({
     sessionDuration: 60,
@@ -109,17 +109,14 @@ const BlockedUsersPage = () => {
 
   return (
     <div className="blocked-users-container">
-      <header className="page-header">
-        <div className="header-content">
-          <button className="back-button" onClick={() => navigate('/manager')}>
-            Retour au Manager
-          </button>
-          <h1>Gestion des Utilisateurs Bloques</h1>
-          <p className="subtitle">Interface Manager - Deblocage des comptes</p>
-        </div>
-      </header>
+      <div className="page-top-bar">
+        <span className="page-subtitle">Gestion des comptes et paramètres de sécurité</span>
+        <button className="refresh-btn" onClick={fetchBlockedUsers} disabled={loading}>
+          🔄 Actualiser
+        </button>
+      </div>
 
-      <main className="main-content">
+      <div className="page-content">
         <div className="stats-card">
           <div className="stat-item">
             <span className="stat-number">{blockedUsers.length}</span>
@@ -164,14 +161,14 @@ const BlockedUsersPage = () => {
             </div>
           </div>
           <div className="settings-actions">
-            <button 
+            <button
               className="save-button"
               onClick={saveSecuritySettings}
               disabled={savingSettings || loadingSettings}
             >
               {savingSettings ? 'Enregistrement...' : 'Sauvegarder'}
             </button>
-            <button 
+            <button
               className="reset-button"
               onClick={resetSecuritySettings}
             >
@@ -251,11 +248,7 @@ const BlockedUsersPage = () => {
             </table>
           </div>
         )}
-      </main>
-
-      <footer className="page-footer">
-        <p>Route Signalement - Interface Manager</p>
-      </footer>
+      </div>
     </div>
   );
 };
