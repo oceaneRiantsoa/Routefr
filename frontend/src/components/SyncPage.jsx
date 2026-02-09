@@ -11,7 +11,7 @@ const SyncPage = () => {
   const [syncResult, setSyncResult] = useState(null);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
-  
+
   // État pour la synchronisation des utilisateurs
   const [usersSyncStatus, setUsersSyncStatus] = useState(null);
   const [syncingUsers, setSyncingUsers] = useState(false);
@@ -60,13 +60,13 @@ const SyncPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       const result = await response.json();
       setUsersSyncResult(result);
-      
+
       // Recharger le statut
       loadUsersSyncStatus();
-      
+
     } catch (err) {
       setError('Erreur synchronisation utilisateurs: ' + err.message);
     } finally {
@@ -92,24 +92,24 @@ const SyncPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (!pullResponse.ok) {
         throw new Error('Erreur lors du Pull: ' + pullResponse.status);
       }
-      
+
       pullResult = await pullResponse.json();
-      
+
       setSyncProgress({ step: 2, message: 'Etape 2/2 : Envoi vers Firebase (Push)...' });
-      
+
       const pushResponse = await fetch(BACKEND_URL + '/api/manager/sync/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (!pushResponse.ok) {
         throw new Error('Erreur lors du Push: ' + pushResponse.status);
       }
-      
+
       pushResult = await pushResponse.json();
 
       setSyncResult({
@@ -147,12 +147,8 @@ const SyncPage = () => {
 
   return (
     <div className="sync-page">
-      <div className="sync-header">
-        <button className="back-button" onClick={() => navigate('/manager')}>
-          Retour
-        </button>
-        <h1>Synchronisation Firebase</h1>
-        <p>Synchronisation automatique bidirectionnelle avec Firebase</p>
+      <div className="page-top-bar">
+        <span className="page-subtitle">Synchronisation bidirectionnelle avec Firebase</span>
       </div>
 
       {stats && (
@@ -189,7 +185,7 @@ const SyncPage = () => {
           </ul>
         </div>
 
-        <button 
+        <button
           className={'main-sync-button ' + (syncing ? 'syncing' : '')}
           onClick={handleFullSync}
           disabled={syncing}
@@ -200,8 +196,8 @@ const SyncPage = () => {
         {syncProgress && (
           <div className="sync-progress">
             <div className="progress-bar">
-              <div 
-                className="progress-fill" 
+              <div
+                className="progress-fill"
                 style={{ width: syncProgress.step === 1 ? '50%' : '100%' }}
               ></div>
             </div>
@@ -221,7 +217,7 @@ const SyncPage = () => {
           <h3>
             {syncResult.success ? 'Synchronisation reussie !' : 'Synchronisation partielle'}
           </h3>
-          
+
           <div className="results-grid">
             <div className="result-card pull-result">
               <h4>Pull (Recuperation)</h4>
@@ -298,14 +294,14 @@ const SyncPage = () => {
       <div className="users-sync-section">
         <h2>👥 Synchronisation des Utilisateurs</h2>
         <p>Les comptes créés localement doivent être synchronisés vers Firebase pour fonctionner sur l'application mobile.</p>
-        
+
         {usersSyncStatus && (
           <div className="users-status">
             <div className="users-count">
               <span className="count-number">{usersSyncStatus.usersNotSynced || 0}</span>
               <span className="count-label">utilisateur(s) à synchroniser</span>
             </div>
-            
+
             {usersSyncStatus.users && usersSyncStatus.users.length > 0 && (
               <div className="users-list">
                 <h4>Utilisateurs en attente :</h4>
@@ -333,15 +329,15 @@ const SyncPage = () => {
             )}
           </div>
         )}
-        
-        <button 
+
+        <button
           className={`sync-users-button ${syncingUsers ? 'syncing' : ''}`}
           onClick={handleSyncUsers}
           disabled={syncingUsers || (usersSyncStatus?.usersNotSynced === 0)}
         >
           {syncingUsers ? '⏳ Synchronisation...' : '🔄 Synchroniser les utilisateurs vers Firebase'}
         </button>
-        
+
         {usersSyncResult && (
           <div className={`users-sync-result ${usersSyncResult.success ? 'success' : 'error'}`}>
             <h4>{usersSyncResult.success ? '✅ Succès' : '⚠️ Terminé avec erreurs'}</h4>
