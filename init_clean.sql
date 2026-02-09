@@ -197,7 +197,7 @@ CREATE TABLE user_sessions (
     user_agent TEXT,
     
     CONSTRAINT fk_session_user 
-        FOREIGN KEY (firebase_uid) REFERENCES local_users(firebase_uid) ON DELETE CASCADE
+        FOREIGN KEY (firebase_uid) REFERENCES local_users(firebase_uid) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- Index pour user_sessions
@@ -249,34 +249,37 @@ INSERT INTO security_settings (session_duration, max_login_attempts, lockout_dur
 VALUES (30, 5, 15, TRUE);
 
 -- Utilisateur test pour les démonstrations
-INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase) 
+-- IMPORTANT: password_hash = BCrypt de "password123" et password_plain_temp pour la sync Firebase
+INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase, password_hash, password_plain_temp) 
 VALUES 
-    ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE),
-    ('user-001', 'user@routefr.com', 'User Test', 'USER', FALSE);
+    ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE, 
+     '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123'),
+    ('user-001', 'user@routefr.com', 'User Test', 'USER', FALSE,
+     '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123');
 
 -- ============================================================================
 -- SECTION 7: SIGNALEMENTS DE TEST
 -- ============================================================================
 
 -- Signalement de test #1
-INSERT INTO signalement (idprofils, datetime_signalement) 
-VALUES (1, '2026-01-10 08:30:00');
+-- INSERT INTO signalement (idprofils, datetime_signalement) 
+-- VALUES (1, '2026-01-10 08:30:00');
 
-INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires) 
-VALUES (1, 1, 1, -18.8792, 47.5146, 12.50, 'Pres arret bus');
+-- INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires) 
+-- VALUES (1, 1, 1, -18.8792, 47.5146, 12.50, 'Pres arret bus');
 
-INSERT INTO signalement_status (id_signalement, idstatut) 
-VALUES (1, 10);
+-- INSERT INTO signalement_status (id_signalement, idstatut) 
+-- VALUES (1, 10);
 
--- Signalement de test #2
-INSERT INTO signalement (idprofils, datetime_signalement) 
-VALUES (1, '2026-01-12 14:15:00');
+-- -- Signalement de test #2
+-- INSERT INTO signalement (idprofils, datetime_signalement) 
+-- VALUES (1, '2026-01-12 14:15:00');
 
-INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires, notes_manager) 
-VALUES (2, 2, 1, -18.8725, 47.5310, 20.00, 'Route fissuree', 'deja traite');
+-- INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires, notes_manager) 
+-- VALUES (2, 2, 1, -18.8725, 47.5310, 20.00, 'Route fissuree', 'deja traite');
 
-INSERT INTO signalement_status (id_signalement, idstatut) 
-VALUES (2, 30);
+-- INSERT INTO signalement_status (id_signalement, idstatut) 
+-- VALUES (2, 30);
 
 -- ============================================================================
 -- SECTION 8: VUE RÉCAPITULATIVE

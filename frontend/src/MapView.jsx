@@ -210,6 +210,22 @@ const MapView = () => {
                     <em>💬 {point.commentaires}</em>
                   </div>
                 )}
+                {point.photos && point.photos.length > 0 && (
+                  <div className="popup-photos">
+                    <strong>📷 Photos ({point.photos.length})</strong>
+                    <div className="popup-photos-grid">
+                      {point.photos.map((photo, idx) => (
+                        <img 
+                          key={idx} 
+                          src={photo} 
+                          alt={`Photo ${idx + 1}`}
+                          className="popup-photo-thumb"
+                          onClick={() => window.open(photo, '_blank')}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>

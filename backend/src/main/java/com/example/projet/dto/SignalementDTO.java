@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -48,6 +49,9 @@ public class SignalementDTO {
     // Budget calculé (surface * cout_par_m2)
     private BigDecimal budgetCalcule;
     private BigDecimal coutParM2;
+    
+    // Photos base64
+    private List<String> photos;
     
     // Helper pour convertir idStatut en libellé
     public static String getStatutLibelle(Integer idStatut) {

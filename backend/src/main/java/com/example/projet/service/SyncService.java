@@ -79,8 +79,8 @@ public class SyncService {
         List<FirebaseSignalementDTO> signalementsSyncros = new ArrayList<>();
         
         try {
-            // Récupérer les données via REST API
-            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_PATH + ".json";
+            // Récupérer les données via REST API depuis signalements_mobile (où le mobile écrit)
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_MOBILE_PATH + ".json";
             log.info("📡 Requête REST vers: {}", url);
             
             HttpRequest request = HttpRequest.newBuilder()
@@ -103,7 +103,7 @@ public class SyncService {
             String jsonResponse = response.body();
             
             if (jsonResponse == null || jsonResponse.equals("null") || jsonResponse.isEmpty()) {
-                log.warn("⚠️ Aucune donnée trouvée dans le chemin '{}'", SIGNALEMENTS_PATH);
+                log.warn("⚠️ Aucune donnée trouvée dans le chemin '{}'", SIGNALEMENTS_MOBILE_PATH);
                 return SyncResultDTO.builder()
                         .success(true)
                         .message("Aucun signalement trouvé dans Firebase")
@@ -192,6 +192,7 @@ public class SyncService {
     /**
      * Mapper les données JSON en DTO
      */
+    @SuppressWarnings("unchecked")
     private FirebaseSignalementDTO mapToDTO(String firebaseId, Map<String, Object> data) {
         FirebaseSignalementDTO dto = new FirebaseSignalementDTO();
         dto.setId(firebaseId);
@@ -221,6 +222,12 @@ public class SyncService {
         dto.setEntrepriseId((String) data.get("entrepriseId"));
         dto.setEntrepriseNom((String) data.get("entrepriseNom"));
         
+        // Récupérer les photos base64 (nouveau système)
+        Object photosObj = data.get("photos");
+        if (photosObj instanceof List) {
+            dto.setPhotos((List<String>) photosObj);
+        }
+        
         return dto;
     }
     
@@ -231,7 +238,7 @@ public class SyncService {
         log.info("👀 Aperçu des signalements Firebase Realtime Database (REST API)...");
         
         try {
-            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_PATH + ".json";
+            String url = FIREBASE_DB_URL + "/" + SIGNALEMENTS_MOBILE_PATH + ".json";
             
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -325,6 +332,16 @@ public class SyncService {
             geom = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
         }
         
+        // Convertir les photos en JSON string
+        String photosJson = null;
+        if (dto.getPhotos() != null && !dto.getPhotos().isEmpty()) {
+            try {
+                photosJson = objectMapper.writeValueAsString(dto.getPhotos());
+            } catch (Exception e) {
+                log.warn("Erreur conversion photos en JSON: {}", e.getMessage());
+            }
+        }
+        
         return SignalementFirebase.builder()
                 .firebaseId(dto.getId())
                 .userId(dto.getUserId())
@@ -339,6 +356,7 @@ public class SyncService {
                 .budget(dto.getBudget())
                 .dateCreationFirebase(timestampToLocalDateTime(dto.getDateCreation()))
                 .photoUrl(dto.getPhotoUrl())
+                .photos(photosJson)
                 .entrepriseId(dto.getEntrepriseId())
                 .entrepriseNom(dto.getEntrepriseNom())
                 .dateSynchronisation(LocalDateTime.now())
@@ -362,6 +380,15 @@ public class SyncService {
         entity.setBudget(dto.getBudget());
         entity.setPhotoUrl(dto.getPhotoUrl());
         entity.setDateSynchronisation(LocalDateTime.now());
+        
+        // Mettre à jour les photos
+        if (dto.getPhotos() != null && !dto.getPhotos().isEmpty()) {
+            try {
+                entity.setPhotos(objectMapper.writeValueAsString(dto.getPhotos()));
+            } catch (Exception e) {
+                log.warn("Erreur conversion photos en JSON: {}", e.getMessage());
+            }
+        }
         
         if (dto.getLatitude() != null && dto.getLongitude() != null) {
             entity.setGeom(geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude())));
@@ -816,8 +843,9 @@ public class SyncService {
      * Mapper un signalement Firebase vers SignalementPushDTO
      */
     private SignalementPushDTO mapFirebaseToSignalementPushDTO(SignalementFirebase entity, long timestamp) {
-        String status = entity.getStatutLocal() != null ? entity.getStatutLocal() : entity.getStatus();
-        Integer idStatut = getIdStatutFromCode(status);
+        String rawStatus = entity.getStatutLocal() != null ? entity.getStatutLocal() : entity.getStatus();
+        Integer idStatut = getIdStatutFromCode(rawStatus);
+        String normalizedStatus = getStatusCode(idStatut); // Toujours: nouveau, en_cours, ou termine
         
         return SignalementPushDTO.builder()
                 .id(entity.getFirebaseId())
@@ -827,7 +855,7 @@ public class SyncService {
                 .problemeId(entity.getProblemeId())
                 .problemeNom(entity.getProblemeNom())
                 .description(entity.getDescription())
-                .status(status)
+                .status(normalizedStatus)
                 .statutLibelle(getStatutLibelle(idStatut))
                 .surface(entity.getSurface())
                 .budget(entity.getBudget())
@@ -942,8 +970,8 @@ public class SyncService {
         if (idStatut == null) return "nouveau";
         switch (idStatut) {
             case 20: return "en_cours";
-            case 30: return "traite";
-            case 40: return "rejete";
+            case 30: return "termine";  // Compatible mobile
+            case 40: return "termine";  // Rejeté = terminé pour le mobile
             default: return "nouveau";
         }
     }
@@ -951,11 +979,15 @@ public class SyncService {
     private Integer getIdStatutFromCode(String status) {
         if (status == null) return 10;
         switch (status.toLowerCase()) {
+            case "nouveau":
+            case "non_traite":
+                return 10;
             case "en_cours":
             case "en cours":
                 return 20;
             case "traite":
             case "traité":
+            case "termine":  // Compatible mobile
                 return 30;
             case "rejete":
             case "rejeté":

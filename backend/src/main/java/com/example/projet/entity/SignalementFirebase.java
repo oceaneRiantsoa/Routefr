@@ -61,6 +61,10 @@ public class SignalementFirebase {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    // Photos base64 stockées comme JSON array
+    @Column(name = "photos", columnDefinition = "TEXT")
+    private String photos;
+
     // Champs pour la gestion locale
     @Column(name = "entreprise_id")
     private String entrepriseId;

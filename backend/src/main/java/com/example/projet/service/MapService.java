@@ -5,6 +5,8 @@ import com.example.projet.dto.RecapDTO;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementDetailsRepository;
 import com.example.projet.repository.SignalementFirebaseRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,22 @@ public class MapService {
 
     private final SignalementDetailsRepository signalementRepository;
     private final SignalementFirebaseRepository signalementFirebaseRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Parser les photos depuis JSON
+     */
+    private List<String> parsePhotos(String photosJson) {
+        if (photosJson == null || photosJson.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(photosJson, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.error("Erreur parsing photos: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
 
     /**
      * Récupérer tous les points pour affichage sur la carte
@@ -77,7 +95,10 @@ public class MapService {
                     double surface = s.getSurface() != null ? s.getSurface().doubleValue() : 0.0;
                     double budget = s.getBudget() != null ? s.getBudget().doubleValue() : 0.0;
                     
-                    return new PointDetailDTO(
+                    // Parser les photos depuis JSON
+                    List<String> photos = parsePhotos(s.getPhotos());
+                    
+                    PointDetailDTO dto = new PointDetailDTO(
                             id,
                             s.getLatitude(),
                             s.getLongitude(),
@@ -85,10 +106,13 @@ public class MapService {
                             s.getDateCreationFirebase(),
                             idStatut,
                             surface,
-                            budget,
+                            0.0, // coutParM2 non utilisé, on met le budget directement
                             s.getEntrepriseNom(),
                             s.getDescription()
                     );
+                    dto.setBudget(budget);
+                    dto.setPhotos(photos);
+                    return dto;
                 })
                 .collect(Collectors.toList());
         

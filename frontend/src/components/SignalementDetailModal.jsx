@@ -121,6 +121,25 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                 </div>
               )}
             </div>
+            
+            {/* Section Photos */}
+            {signalement.photos && signalement.photos.length > 0 && (
+              <div className="photos-section">
+                <h4>📷 Photos ({signalement.photos.length})</h4>
+                <div className="photos-grid">
+                  {signalement.photos.map((photo, index) => (
+                    <div key={index} className="photo-item">
+                      <img 
+                        src={photo} 
+                        alt={`Photo ${index + 1}`}
+                        onClick={() => window.open(photo, '_blank')}
+                        title="Cliquer pour agrandir"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Champs éditables */}

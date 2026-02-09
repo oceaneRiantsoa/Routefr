@@ -9,6 +9,8 @@ import com.example.projet.entity.SignalementStatus;
 import com.example.projet.repository.SignalementDetailsRepository;
 import com.example.projet.repository.SignalementFirebaseRepository;
 import com.example.projet.repository.SignalementStatusRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class SignalementService {
     private final SignalementDetailsRepository repository;
     private final SignalementFirebaseRepository firebaseRepository;
     private final SignalementStatusRepository statusRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Récupère tous les signalements pour le manager (locaux + Firebase)
@@ -279,6 +282,16 @@ public class SignalementService {
             }
         }
         
+        // Récupérer les photos depuis le JSON stocké
+        List<String> photos = null;
+        if (entity.getPhotos() != null && !entity.getPhotos().isEmpty()) {
+            try {
+                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {});
+            } catch (Exception e) {
+                log.warn("Erreur lecture photos JSON: {}", e.getMessage());
+            }
+        }
+        
         return SignalementDTO.builder()
                 .id(dtoId)
                 .idSignalement(null) // Pas de correspondance dans signalement_details
@@ -303,6 +316,8 @@ public class SignalementService {
                 .avancementPourcentage(entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0)
                 .dateDebutTravaux(entity.getDateDebutTravaux())
                 .dateFinTravaux(entity.getDateFinTravaux())
+                // Photos
+                .photos(photos)
                 .build();
     }
     

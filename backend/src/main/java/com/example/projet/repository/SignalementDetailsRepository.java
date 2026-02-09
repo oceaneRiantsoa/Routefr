@@ -12,8 +12,8 @@ public interface SignalementDetailsRepository extends JpaRepository<SignalementD
     @Query(value = """
         SELECT 
             sd.id,
-            ST_Y(CAST(sd.geom AS geometry)) as lat,
-            ST_X(CAST(sd.geom AS geometry)) as lng,
+            COALESCE(ST_Y(CAST(sd.geom AS geometry)), sd.latitude) as lat,
+            COALESCE(ST_X(CAST(sd.geom AS geometry)), sd.longitude) as lng,
             p.nom as probleme,
             s.datetime_signalement,
             ss.idStatut,
@@ -51,8 +51,8 @@ public interface SignalementDetailsRepository extends JpaRepository<SignalementD
         SELECT 
             sd.id,
             sd.id_signalement,
-            ST_Y(CAST(sd.geom AS geometry)) as lat,
-            ST_X(CAST(sd.geom AS geometry)) as lng,
+            COALESCE(ST_Y(CAST(sd.geom AS geometry)), sd.latitude) as lat,
+            COALESCE(ST_X(CAST(sd.geom AS geometry)), sd.longitude) as lng,
             p.nom as probleme,
             s.datetime_signalement,
             sd.surface,
@@ -78,8 +78,8 @@ public interface SignalementDetailsRepository extends JpaRepository<SignalementD
         SELECT 
             sd.id,
             sd.id_signalement,
-            ST_Y(CAST(sd.geom AS geometry)) as lat,
-            ST_X(CAST(sd.geom AS geometry)) as lng,
+            COALESCE(ST_Y(CAST(sd.geom AS geometry)), sd.latitude) as lat,
+            COALESCE(ST_X(CAST(sd.geom AS geometry)), sd.longitude) as lng,
             p.nom as probleme,
             s.datetime_signalement,
             sd.surface,

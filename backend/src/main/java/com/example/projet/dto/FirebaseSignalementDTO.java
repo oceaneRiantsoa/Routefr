@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * DTO pour mapper les signalements depuis Firebase Firestore
@@ -34,4 +35,7 @@ public class FirebaseSignalementDTO {
     private String entrepriseId;
     private String entrepriseNom;
     private String photoUrl;
+    
+    // Photos base64 (nouvau système)
+    private List<String> photos;
 }

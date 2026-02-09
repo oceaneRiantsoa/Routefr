@@ -4,16 +4,36 @@ import { realtimeDb, auth } from '@/firebase';
 import type { Signalement, SignalementStats, TypeProbleme, Entreprise } from '@/types/signalement';
 import { TYPES_PROBLEMES_INITIAUX, ENTREPRISES_INITIALES } from '@/types/signalement';
 import { ref, type Ref } from 'vue';
-import { photoService, type SignalementPhoto } from './photoService';
+import { type SignalementPhoto } from './photoService';
 
 class SignalementService {
-  private signalementPath = 'signalements';
+  // IMPORTANT: Ce chemin doit correspondre à celui utilisé par le backend web
+  // Le backend utilise "signalements_mobile" pour la synchronisation
+  private signalementPath = 'signalements_mobile';
   private problemesPath = 'types_problemes';
   private entreprisesPath = 'entreprises';
 
   // ==================== SIGNALEMENTS ====================
 
-  // Créer un nouveau signalement (mobile - simplifié)
+  /**
+   * Convertir les photos en tableau de chaînes base64
+   * Les photos sont stockées directement dans Firebase Realtime Database (GRATUIT!)
+   * Pas besoin de Firebase Storage payant
+   */
+  private convertPhotosToBase64(photos: SignalementPhoto[]): string[] {
+    return photos
+      .filter(photo => photo.webviewPath) // Filtrer les photos valides
+      .map(photo => {
+        // Si c'est déjà un dataUrl base64, le garder tel quel
+        if (photo.webviewPath?.startsWith('data:')) {
+          return photo.webviewPath;
+        }
+        // Sinon retourner la valeur telle quelle
+        return photo.webviewPath!;
+      });
+  }
+
+  // Créer un nouveau signalement (mobile - avec photos en base64)
   async createSignalement(data: {
     latitude: number;
     longitude: number;
@@ -28,15 +48,11 @@ class SignalementService {
     const newSignalementRef = push(dbRef(realtimeDb, this.signalementPath));
     const signalementId = newSignalementRef.key!;
 
-    // Upload des photos si présentes
-    let photoUrls: string[] = [];
+    // Convertir les photos en base64 directement (GRATUIT - pas de Firebase Storage)
+    let photosBase64: string[] = [];
     if (data.photos && data.photos.length > 0) {
-      try {
-        photoUrls = await photoService.uploadPhotos(data.photos, signalementId);
-      } catch (error) {
-        console.error('Erreur upload photos:', error);
-        // Continue sans les photos
-      }
+      photosBase64 = this.convertPhotosToBase64(data.photos);
+      console.log(`📷 ${photosBase64.length} photo(s) converties en base64`);
     }
     
     // Construire l'objet signalement SANS les champs undefined
@@ -54,9 +70,9 @@ class SignalementService {
       dateCreation: Date.now(),
     };
     
-    // Ajouter les photos seulement si elles existent
-    if (photoUrls.length > 0) {
-      newSignalement.photos = photoUrls;
+    // Ajouter les photos base64 seulement si elles existent
+    if (photosBase64.length > 0) {
+      newSignalement.photos = photosBase64;
     }
 
     await set(newSignalementRef, newSignalement);
