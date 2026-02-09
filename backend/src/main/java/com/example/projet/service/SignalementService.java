@@ -36,7 +36,7 @@ public class SignalementService {
      */
     public List<SignalementDTO> getAllSignalements() {
         List<SignalementDTO> allSignalements = new ArrayList<>();
-        
+
         // 1. Signalements locaux (signalement_details)
         List<Object[]> results = repository.findAllSignalementsForManager();
         List<SignalementDTO> localSignalements = results.stream()
@@ -44,7 +44,7 @@ public class SignalementService {
                 .collect(Collectors.toList());
         allSignalements.addAll(localSignalements);
         log.debug("📍 Signalements locaux: {}", localSignalements.size());
-        
+
         // 2. Signalements Firebase (signalement_firebase)
         List<SignalementFirebase> firebaseSignalements = firebaseRepository.findAll();
         List<SignalementDTO> firebaseDTOs = firebaseSignalements.stream()
@@ -52,7 +52,7 @@ public class SignalementService {
                 .collect(Collectors.toList());
         allSignalements.addAll(firebaseDTOs);
         log.debug("🔥 Signalements Firebase: {}", firebaseDTOs.size());
-        
+
         log.info("📋 Total signalements (Manager): {}", allSignalements.size());
         return allSignalements;
     }
@@ -71,7 +71,8 @@ public class SignalementService {
      * Récupère un signalement par son ID
      */
     public Optional<SignalementDTO> getSignalementById(Long id) {
-        // Récupérer tous et filtrer par ID (on pourrait optimiser avec une requête dédiée)
+        // Récupérer tous et filtrer par ID (on pourrait optimiser avec une requête
+        // dédiée)
         return getAllSignalements().stream()
                 .filter(s -> s.getId().equals(id))
                 .findFirst();
@@ -79,57 +80,113 @@ public class SignalementService {
 
     /**
      * Met à jour un signalement (infos manager + statut)
+     * Gère les deux types: signalements locaux (id < 10000) et Firebase (id >=
+     * 10000)
      */
     @Transactional
     public SignalementDTO updateSignalement(Long id, SignalementUpdateDTO updateDTO) {
-        SignalementDetails entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Signalement non trouvé avec l'ID: " + id));
+        // Les signalements Firebase ont des IDs offset de 10000
+        if (id >= 10000) {
+            // C'est un signalement Firebase
+            Long firebaseId = id - 10000;
+            SignalementFirebase entity = firebaseRepository.findById(firebaseId)
+                    .orElseThrow(
+                            () -> new RuntimeException("Signalement Firebase non trouvé avec l'ID: " + firebaseId));
 
-        // Mise à jour des champs de signalement_details
-        if (updateDTO.getSurface() != null) {
-            entity.setSurface(updateDTO.getSurface());
-        }
-        if (updateDTO.getBudgetEstime() != null) {
-            entity.setBudgetEstime(updateDTO.getBudgetEstime());
-        }
-        if (updateDTO.getIdEntreprise() != null) {
-            entity.setIdEntreprise(updateDTO.getIdEntreprise());
-        }
-        if (updateDTO.getNotesManager() != null) {
-            entity.setNotesManager(updateDTO.getNotesManager());
-        }
-        
-        // Date de modification
-        entity.setDateModification(LocalDateTime.now());
-
-        repository.save(entity);
-
-        // Mise à jour du statut dans signalement_status
-        if (updateDTO.getIdStatut() != null && entity.getIdSignalement() != null) {
-            Optional<SignalementStatus> existingStatus = statusRepository.findByIdSignalement(entity.getIdSignalement().longValue());
-            
-            if (existingStatus.isPresent()) {
-                SignalementStatus status = existingStatus.get();
-                status.setIdStatut(updateDTO.getIdStatut());
-                statusRepository.save(status);
-            } else {
-                // Créer un nouveau statut si n'existe pas
-                SignalementStatus newStatus = SignalementStatus.builder()
-                        .idSignalement(entity.getIdSignalement().intValue())
-                        .idStatut(updateDTO.getIdStatut())
-                        .build();
-                statusRepository.save(newStatus);
+            // Mise à jour des champs accessibles
+            if (updateDTO.getSurface() != null) {
+                entity.setSurface(updateDTO.getSurface());
             }
-            
-            // Note: L'avancement pour les signalements locaux est calculé dynamiquement 
-            // basé sur le statut. Pas de persistance de l'avancement dans signalement_details.
-            log.info("Statut {} mis à jour pour signalement local {}", updateDTO.getIdStatut(), id);
-        }
+            if (updateDTO.getBudgetEstime() != null) {
+                entity.setBudgetEstime(updateDTO.getBudgetEstime());
+            }
+            if (updateDTO.getIdEntreprise() != null) {
+                entity.setEntrepriseId(updateDTO.getIdEntreprise().toString());
+            }
+            if (updateDTO.getNotesManager() != null) {
+                entity.setNotesManager(updateDTO.getNotesManager());
+            }
 
-        log.info("Signalement {} mis à jour avec statut: {}", id, updateDTO.getIdStatut());
+            // Mise à jour du statut (conversion vers le format Firebase si nécessaire)
+            if (updateDTO.getIdStatut() != null) {
+                String statutLocal = mapIdStatutToStatutLocal(updateDTO.getIdStatut());
+                entity.setStatutLocal(statutLocal);
+                log.info("Statut local converti: {} → {}", updateDTO.getIdStatut(), statutLocal);
+            }
+
+            // Date de modification
+            entity.setDateModificationLocal(LocalDateTime.now());
+
+            firebaseRepository.save(entity);
+            log.info("Signalement Firebase {} sauvegardé avec statut: {} (local: {})", firebaseId,
+                    updateDTO.getIdStatut(), entity.getStatutLocal());
+
+        } else {
+            // C'est un signalement local
+            SignalementDetails entity = repository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Signalement non trouvé avec l'ID: " + id));
+
+            // Mise à jour des champs de signalement_details
+            if (updateDTO.getSurface() != null) {
+                entity.setSurface(updateDTO.getSurface());
+            }
+            if (updateDTO.getBudgetEstime() != null) {
+                entity.setBudgetEstime(updateDTO.getBudgetEstime());
+            }
+            if (updateDTO.getIdEntreprise() != null) {
+                entity.setIdEntreprise(updateDTO.getIdEntreprise());
+            }
+            if (updateDTO.getNotesManager() != null) {
+                entity.setNotesManager(updateDTO.getNotesManager());
+            }
+
+            // Date de modification
+            entity.setDateModification(LocalDateTime.now());
+
+            repository.save(entity);
+
+            // Mise à jour du statut dans signalement_status
+            if (updateDTO.getIdStatut() != null && entity.getIdSignalement() != null) {
+                Optional<SignalementStatus> existingStatus = statusRepository
+                        .findByIdSignalement(entity.getIdSignalement().longValue());
+
+                if (existingStatus.isPresent()) {
+                    SignalementStatus status = existingStatus.get();
+                    status.setIdStatut(updateDTO.getIdStatut());
+                    statusRepository.save(status);
+                } else {
+                    // Créer un nouveau statut si n'existe pas
+                    SignalementStatus newStatus = SignalementStatus.builder()
+                            .idSignalement(entity.getIdSignalement().intValue())
+                            .idStatut(updateDTO.getIdStatut())
+                            .build();
+                    statusRepository.save(newStatus);
+                }
+
+                log.info("Statut {} mis à jour pour signalement local {}", updateDTO.getIdStatut(), id);
+            }
+
+            log.info("Signalement {} mis à jour avec statut: {}", id, updateDTO.getIdStatut());
+        }
 
         // Retourner le signalement mis à jour
         return getSignalementById(id).orElseThrow();
+    }
+
+    /**
+     * Convertit un idStatut numérique vers le format texte Firebase
+     */
+    private String mapIdStatutToStatutLocal(Integer idStatut) {
+        switch (idStatut) {
+            case 20:
+                return "en_cours";
+            case 30:
+                return "traite";
+            case 40:
+                return "rejete";
+            default:
+                return "en_attente";
+        }
     }
 
     /**
@@ -137,13 +194,13 @@ public class SignalementService {
      */
     public Map<String, Long> getStatistiquesByStatut() {
         Map<String, Long> stats = new LinkedHashMap<>();
-        
+
         // Initialiser tous les statuts à 0
         stats.put("EN_ATTENTE", 0L);
         stats.put("EN_COURS", 0L);
         stats.put("TRAITE", 0L);
         stats.put("REJETE", 0L);
-        
+
         // 1. Compter les signalements locaux (signalement_details)
         List<Object[]> localResults = repository.countByStatut();
         for (Object[] row : localResults) {
@@ -152,7 +209,7 @@ public class SignalementService {
             String code = SignalementDTO.getStatutCode(idStatut);
             stats.put(code, stats.getOrDefault(code, 0L) + count);
         }
-        
+
         // 2. Compter les signalements Firebase (signalement_firebase)
         List<Object[]> firebaseResults = firebaseRepository.countByStatusGrouped();
         for (Object[] row : firebaseResults) {
@@ -162,15 +219,16 @@ public class SignalementService {
             String code = mapFirebaseStatusToCode(status);
             stats.put(code, stats.getOrDefault(code, 0L) + count);
         }
-        
+
         return stats;
     }
-    
+
     /**
      * Mapper le status Firebase vers le code statut local
      */
     private String mapFirebaseStatusToCode(String firebaseStatus) {
-        if (firebaseStatus == null) return "EN_ATTENTE";
+        if (firebaseStatus == null)
+            return "EN_ATTENTE";
         switch (firebaseStatus.toLowerCase()) {
             case "en_cours":
             case "en cours":
@@ -210,9 +268,9 @@ public class SignalementService {
         BigDecimal surface = row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO;
         BigDecimal coutParM2 = row[7] != null ? new BigDecimal(row[7].toString()) : BigDecimal.ZERO;
         BigDecimal budgetCalcule = surface.multiply(coutParM2);
-        
+
         Integer idStatut = row[14] != null ? ((Number) row[14]).intValue() : 10;
-        
+
         // Calculer l'avancement basé sur le statut pour les signalements locaux
         Integer avancementPourcentage = mapStatutToAvancement(idStatut);
 
@@ -244,12 +302,19 @@ public class SignalementService {
     private SignalementDTO mapFirebaseToDTO(SignalementFirebase entity) {
         // Offset de 10000 pour éviter les conflits d'ID avec les signalements locaux
         Long dtoId = 10000L + entity.getId();
-        
+
         // Mapper le statut Firebase vers les ID de statut locaux
         Integer idStatut;
-        String status = entity.getStatutLocal() != null ? entity.getStatutLocal() : 
-                       (entity.getStatus() != null ? entity.getStatus() : "nouveau");
-        
+        String statutLocalVal = entity.getStatutLocal();
+        // Si statut_local est absent, vide ou contient la valeur générique 'non_traite',
+        // préférer le champ `status` (valeurs venant de Firebase). Sinon utiliser statut_local.
+        String status = (statutLocalVal != null && !statutLocalVal.trim().isEmpty() && !statutLocalVal.equalsIgnoreCase("non_traite"))
+            ? statutLocalVal
+            : (entity.getStatus() != null && !entity.getStatus().trim().isEmpty() ? entity.getStatus() : "nouveau");
+
+        log.info("Firebase ID {}: statut_local='{}', status='{}' -> status utilisé='{}'", entity.getId(), statutLocalVal, entity.getStatus(), status);
+                entity.getStatus(), status);
+
         switch (status.toLowerCase()) {
             case "en_cours":
             case "en cours":
@@ -266,12 +331,14 @@ public class SignalementService {
             default:
                 idStatut = 10; // nouveau / en_attente
         }
-        
+
+        log.debug("Firebase ID {} mappé à idStatut: {}", entity.getId(), idStatut);
+
         BigDecimal surface = entity.getSurface() != null ? entity.getSurface() : BigDecimal.ZERO;
         // Estimation du coût par m2 (valeur par défaut si non définie)
         BigDecimal coutParM2 = BigDecimal.valueOf(28750); // Valeur par défaut
         BigDecimal budgetCalcule = surface.multiply(coutParM2);
-        
+
         // Convertir l'ID entreprise de String à Integer si possible
         Integer idEntreprise = null;
         if (entity.getEntrepriseId() != null) {
@@ -281,17 +348,18 @@ public class SignalementService {
                 log.debug("Impossible de convertir entrepriseId en Integer: {}", entity.getEntrepriseId());
             }
         }
-        
+
         // Récupérer les photos depuis le JSON stocké
         List<String> photos = null;
         if (entity.getPhotos() != null && !entity.getPhotos().isEmpty()) {
             try {
-                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {});
+                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {
+                });
             } catch (Exception e) {
                 log.warn("Erreur lecture photos JSON: {}", e.getMessage());
             }
         }
-        
+
         return SignalementDTO.builder()
                 .id(dtoId)
                 .idSignalement(null) // Pas de correspondance dans signalement_details
@@ -313,24 +381,26 @@ public class SignalementService {
                 .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
                 .budgetCalcule(budgetCalcule)
                 // Champs d'avancement
-                .avancementPourcentage(entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0)
+                .avancementPourcentage(
+                        entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0)
                 .dateDebutTravaux(entity.getDateDebutTravaux())
                 .dateFinTravaux(entity.getDateFinTravaux())
                 // Photos
                 .photos(photos)
                 .build();
     }
-    
+
     /**
      * Convertit un statut en pourcentage d'avancement
      * 10 (EN_ATTENTE) -> 0%
-     * 20 (EN_COURS) -> 50%  
+     * 20 (EN_COURS) -> 50%
      * 30 (TRAITE) -> 100%
      * 40 (REJETE) -> 0%
      */
     private Integer mapStatutToAvancement(Integer idStatut) {
-        if (idStatut == null) return null;
-        
+        if (idStatut == null)
+            return null;
+
         switch (idStatut) {
             case 10: // EN_ATTENTE
                 return 0;

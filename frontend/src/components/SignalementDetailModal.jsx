@@ -42,9 +42,10 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    // Convertir idStatut en nombre pour éviter les problèmes de comparaison
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'idStatut' ? parseInt(value) : value
     }));
   };
 
@@ -69,7 +70,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
         notesManager: formData.notesManager || null,
         idStatut: parseInt(formData.idStatut)
       };
-      
+
       await onSave(signalement.id, dataToSend);
     } catch (err) {
       setError(err.message || 'Erreur lors de la sauvegarde');
@@ -121,7 +122,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                 </div>
               )}
             </div>
-            
+
             {/* Section Photos */}
             {signalement.photos && signalement.photos.length > 0 && (
               <div className="photos-section">
@@ -129,8 +130,8 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                 <div className="photos-grid">
                   {signalement.photos.map((photo, index) => (
                     <div key={index} className="photo-item">
-                      <img 
-                        src={photo} 
+                      <img
+                        src={photo}
                         alt={`Photo ${index + 1}`}
                         onClick={() => window.open(photo, '_blank')}
                         title="Cliquer pour agrandir"
@@ -145,7 +146,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
           {/* Champs éditables */}
           <div className="editable-section">
             <h3>Informations Manager</h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="surface">Surface (m²)</label>
@@ -218,18 +219,18 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                 {STATUTS.map(statut => (
                   <label
                     key={statut.id}
-                    className={`status-option ${formData.idStatut === statut.id ? 'selected' : ''}`}
-                    style={formData.idStatut === statut.id ? 
-                      { borderColor: statut.color, backgroundColor: `${statut.color}20` } : 
+                    className={`status-option ${Number(formData.idStatut) === Number(statut.id) ? 'selected' : ''}`}
+                    style={Number(formData.idStatut) === Number(statut.id) ?
+                      { borderColor: statut.color, backgroundColor: `${statut.color}20` } :
                       {}
                     }
                   >
                     <input
                       type="radio"
                       name="idStatut"
-                      value={statut.id}
-                      checked={formData.idStatut === statut.id}
-                      onChange={() => handleStatutChange(statut.id)}
+                      value={String(statut.id)}
+                      checked={Number(formData.idStatut) === Number(statut.id)}
+                      onChange={(e) => handleStatutChange(parseInt(e.target.value))}
                     />
                     <span className="status-icon">{statut.icon}</span>
                     <span className="status-text">{statut.libelle}</span>
@@ -248,16 +249,16 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
 
           {/* Boutons d'action */}
           <div className="modal-actions">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="cancel-btn"
               onClick={onClose}
               disabled={saving}
             >
               Annuler
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="save-btn"
               disabled={saving}
             >
