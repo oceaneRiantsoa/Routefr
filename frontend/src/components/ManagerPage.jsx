@@ -135,13 +135,13 @@ const ManagerPage = () => {
                   {stats.recentSignalements.map((sig) => (
                     <tr key={sig.id}>
                       <td>#{sig.id}</td>
-                      <td>{sig.nomProbleme || '-'}</td>
+                      <td>{sig.problemeNom || sig.probleme || '-'}</td>
                       <td>
                         <span className={`badge ${getStatusClass(sig.idStatut)}`}>
                           {getStatusLabel(sig.idStatut)}
                         </span>
                       </td>
-                      <td>{sig.avancement != null ? `${sig.avancement}%` : '0%'}</td>
+                      <td>{sig.avancementPourcentage != null ? `${sig.avancementPourcentage}%` : '0%'}</td>
                     </tr>
                   ))}
                 </tbody>

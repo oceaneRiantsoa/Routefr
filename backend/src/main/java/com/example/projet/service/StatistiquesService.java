@@ -3,9 +3,7 @@ package com.example.projet.service;
 import com.example.projet.dto.AvancementDTO;
 import com.example.projet.dto.StatistiquesDTO;
 import com.example.projet.entity.SignalementFirebase;
-import com.example.projet.entity.SignalementStatus;
 import com.example.projet.repository.SignalementFirebaseRepository;
-import com.example.projet.repository.SignalementStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +23,6 @@ import java.util.stream.Collectors;
 public class StatistiquesService {
 
     private final SignalementFirebaseRepository firebaseRepository;
-    private final SignalementStatusRepository statusRepository;
 
     /**
      * Calcule les statistiques complètes avec délais de traitement
@@ -243,8 +240,8 @@ public class StatistiquesService {
         signalement.setAvancementPourcentage(pourcentage);
         signalement.setDateModificationLocal(now);
         
-        // Synchroniser avec la table signalement_status
-        updateSignalementStatus(id, codeStatut);
+        // Marquer pour synchronisation vers Firebase
+        signalement.setNeedsFirebaseSync(true);
         
         // Ajouter les notes si fournies
         if (avancementDTO.getNotes() != null && !avancementDTO.getNotes().isEmpty()) {
@@ -265,36 +262,6 @@ public class StatistiquesService {
         else if (pourcentage == 50) return 20;  // EN_COURS
         else if (pourcentage == 100) return 30; // TERMINE/TRAITE
         else return 10; // Par défaut EN_ATTENTE
-    }
-
-    /**
-     * Met à jour la table signalement_status avec le nouveau code de statut
-     */
-    @Transactional
-    private void updateSignalementStatus(Long signalementId, Integer codeStatut) {
-        try {
-            // Chercher le statut existant
-            Optional<SignalementStatus> existingStatus = statusRepository.findByIdSignalement(signalementId);
-            
-            if (existingStatus.isPresent()) {
-                // Mettre à jour le statut existant
-                SignalementStatus status = existingStatus.get();
-                status.setIdStatut(codeStatut);
-                statusRepository.save(status);
-                log.info("Statut mis à jour pour signalement {}: code {}", signalementId, codeStatut);
-            } else {
-                // Créer un nouveau statut
-                SignalementStatus newStatus = SignalementStatus.builder()
-                    .idSignalement(signalementId.intValue())
-                    .idStatut(codeStatut)
-                    .build();
-                statusRepository.save(newStatus);
-                log.info("Nouveau statut créé pour signalement {}: code {}", signalementId, codeStatut);
-            }
-        } catch (Exception e) {
-            log.error("Erreur lors de la mise à jour du statut pour signalement {}: {}", signalementId, e.getMessage());
-            // Ne pas faire échouer la transaction principale
-        }
     }
 
     /**

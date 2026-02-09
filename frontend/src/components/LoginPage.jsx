@@ -161,7 +161,7 @@ const LoginPage = () => {
         <div className="login-info">
           <p><strong>Compte par défaut :</strong></p>
           <p>manager@routefr.com</p>
-          <p>Manager123!</p>
+          <p>123456</p>
         </div>
       </div>
     </div>

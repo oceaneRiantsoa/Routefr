@@ -56,4 +56,29 @@ public interface SignalementFirebaseRepository extends JpaRepository<Signalement
      */
     @Query("SELECT s.status, COUNT(s) FROM SignalementFirebase s GROUP BY s.status")
     List<Object[]> countByStatusGrouped();
+
+    // ========================
+    // NOUVELLES REQUÊTES POUR LA GESTION UNIFIÉE
+    // ========================
+
+    /**
+     * Trouver tous les signalements modifiés localement qui doivent être synchronisés
+     */
+    List<SignalementFirebase> findByNeedsFirebaseSyncTrue();
+
+    /**
+     * Filtrer par avancement (0=nouveau, 50=en_cours, 100=terminé)
+     */
+    List<SignalementFirebase> findByAvancementPourcentageOrderByDateCreationFirebaseDesc(Integer avancementPourcentage);
+
+    /**
+     * Compter les signalements par avancement
+     */
+    @Query("SELECT s.avancementPourcentage, COUNT(s) FROM SignalementFirebase s GROUP BY s.avancementPourcentage")
+    List<Object[]> countByAvancementGrouped();
+
+    /**
+     * Compter les signalements qui nécessitent une synchronisation Firebase
+     */
+    long countByNeedsFirebaseSyncTrue();
 }

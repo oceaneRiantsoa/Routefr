@@ -87,6 +87,11 @@ public class SignalementFirebase {
     @Column(name = "date_modification_local")
     private LocalDateTime dateModificationLocal;
 
+    // Marqueur pour synchroniser les modifications vers Firebase
+    @Column(name = "needs_firebase_sync")
+    @Builder.Default
+    private Boolean needsFirebaseSync = false;
+
     // Champs pour le suivi d'avancement
     @Column(name = "avancement_pourcentage")
     @Builder.Default

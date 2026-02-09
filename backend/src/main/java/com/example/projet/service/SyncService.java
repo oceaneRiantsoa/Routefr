@@ -8,7 +8,6 @@ import com.example.projet.dto.UserSyncResultDTO;
 import com.example.projet.entity.LocalUser;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementFirebaseRepository;
-import com.example.projet.repository.SignalementDetailsRepository;
 import com.example.projet.repository.LocalUserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.auth.FirebaseAuth;
@@ -51,7 +50,6 @@ public class SyncService {
 
     private final FirebaseDatabase firebaseDatabase;
     private final SignalementFirebaseRepository signalementFirebaseRepository;
-    private final SignalementDetailsRepository signalementDetailsRepository;
     private final LocalUserRepository localUserRepository;
     
     @Autowired
@@ -629,6 +627,20 @@ public class SyncService {
             // 4. Mettre à jour les métadonnées si au moins un envoi réussi
             if (!envoyes.isEmpty()) {
                 updatePushMetadataViaRest(envoyes.size());
+                
+                // Remettre needsFirebaseSync = false pour les signalements envoyés avec succès
+                for (String firebaseKey : envoyes) {
+                    try {
+                        Optional<SignalementFirebase> entity = signalementFirebaseRepository.findByFirebaseId(firebaseKey);
+                        if (entity.isPresent()) {
+                            entity.get().setNeedsFirebaseSync(false);
+                            signalementFirebaseRepository.save(entity.get());
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ Erreur reset sync flag pour {}: {}", firebaseKey, e.getMessage());
+                    }
+                }
+                log.info("🔄 Flags needsFirebaseSync remis à false pour {} signalements", envoyes.size());
             }
             
             log.info("✅ Push terminé - Nouveaux: {}, Mis à jour: {}, Erreurs: {}", 
@@ -665,21 +677,14 @@ public class SyncService {
         try {
             SignalementPushDTO dto = null;
             
-            // Chercher d'abord dans les signalements Firebase
+            // Chercher dans les signalements Firebase
             if (signalementId.startsWith("local_")) {
-                // C'est un ID local
                 Long localId = Long.parseLong(signalementId.replace("local_", ""));
                 dto = getLocalSignalementForPush(localId);
             } else {
-                // C'est un ID Firebase ou un ID local numérique
                 try {
                     Long localId = Long.parseLong(signalementId);
-                    // Vérifier si c'est un ID avec offset (Firebase)
-                    if (localId >= 10000) {
-                        dto = getFirebaseSignalementForPush(localId - 10000);
-                    } else {
-                        dto = getLocalSignalementForPush(localId);
-                    }
+                    dto = getLocalSignalementForPush(localId);
                 } catch (NumberFormatException e) {
                     // C'est un ID Firebase string
                     dto = getFirebaseSignalementByFirebaseId(signalementId);
@@ -741,49 +746,28 @@ public class SyncService {
     }
     
     /**
-     * Récupérer tous les signalements formatés pour l'envoi Firebase
+     * Récupérer tous les signalements modifiés (needsFirebaseSync=true) pour push vers Firebase
      */
     private List<SignalementPushDTO> getAllSignalementsForPush() {
         List<SignalementPushDTO> result = new ArrayList<>();
         long timestamp = System.currentTimeMillis();
         
-        // 1. Signalements locaux (signalement_details)
-        List<Object[]> localResults = signalementDetailsRepository.findAllSignalementsForManager();
-        for (Object[] row : localResults) {
-            result.add(mapLocalToSignalementPushDTO(row, timestamp));
-        }
-        
-        // 2. Signalements Firebase synchronisés (signalement_firebase)
-        List<SignalementFirebase> firebaseResults = signalementFirebaseRepository.findAll();
-        for (SignalementFirebase entity : firebaseResults) {
+        // Uniquement les signalements Firebase modifiés localement
+        List<SignalementFirebase> modifiedResults = signalementFirebaseRepository.findByNeedsFirebaseSyncTrue();
+        for (SignalementFirebase entity : modifiedResults) {
             result.add(mapFirebaseToSignalementPushDTO(entity, timestamp));
         }
         
-        log.debug("📋 Préparation de {} signalements pour push ({} locaux + {} Firebase)",
-                result.size(), localResults.size(), firebaseResults.size());
+        log.debug("📋 {} signalements modifiés à pousser vers Firebase", result.size());
         
         return result;
     }
     
     /**
-     * Récupérer un signalement local formaté pour push
+     * Récupérer un signalement Firebase formaté pour push par son ID local
      */
     private SignalementPushDTO getLocalSignalementForPush(Long localId) {
-        List<Object[]> results = signalementDetailsRepository.findAllSignalementsForManager();
-        for (Object[] row : results) {
-            Long id = ((Number) row[0]).longValue();
-            if (id.equals(localId)) {
-                return mapLocalToSignalementPushDTO(row, System.currentTimeMillis());
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Récupérer un signalement Firebase formaté pour push
-     */
-    private SignalementPushDTO getFirebaseSignalementForPush(Long firebaseLocalId) {
-        return signalementFirebaseRepository.findById(firebaseLocalId)
+        return signalementFirebaseRepository.findById(localId)
                 .map(entity -> mapFirebaseToSignalementPushDTO(entity, System.currentTimeMillis()))
                 .orElse(null);
     }
@@ -795,48 +779,6 @@ public class SyncService {
         return signalementFirebaseRepository.findByFirebaseId(firebaseId)
                 .map(entity -> mapFirebaseToSignalementPushDTO(entity, System.currentTimeMillis()))
                 .orElse(null);
-    }
-    
-    /**
-     * Mapper un signalement local vers SignalementPushDTO
-     */
-    private SignalementPushDTO mapLocalToSignalementPushDTO(Object[] row, long timestamp) {
-        Long id = ((Number) row[0]).longValue();
-        Integer idStatut = row[14] != null ? ((Number) row[14]).intValue() : 10;
-        
-        BigDecimal surface = row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO;
-        BigDecimal coutParM2 = row[7] != null ? new BigDecimal(row[7].toString()) : BigDecimal.ZERO;
-        
-        String status = getStatusCode(idStatut);
-        
-        return SignalementPushDTO.builder()
-                .id(null) // Pas d'ID Firebase pour les signalements locaux
-                .localId(id)
-                .latitude(row[2] != null ? ((Number) row[2]).doubleValue() : null)
-                .longitude(row[3] != null ? ((Number) row[3]).doubleValue() : null)
-                .problemeId(row[4] != null ? row[4].toString() : null)
-                .problemeNom(row[4] != null ? row[4].toString() : null)
-                .description(row[10] != null ? row[10].toString() : null)
-                .status(status)
-                .statutLibelle(getStatutLibelle(idStatut))
-                .surface(surface)
-                .budget(surface.multiply(coutParM2))
-                .budgetEstime(row[11] != null ? new BigDecimal(row[11].toString()) : null)
-                .coutParM2(coutParM2)
-                .entrepriseId(row[8] != null ? row[8].toString() : null)
-                .entrepriseNom(row[9] != null ? row[9].toString() : null)
-                .notesManager(row[12] != null ? row[12].toString() : null)
-                .commentaires(row[10] != null ? row[10].toString() : null)
-                .dateCreation(row[5] != null ? ((java.sql.Timestamp) row[5]).getTime() : null)
-                .dateModification(row[13] != null ? ((java.sql.Timestamp) row[13]).getTime() : null)
-                .datePush(timestamp)
-                .userId(null)
-                .userEmail(null)
-                .photoUrl(null)
-                .source("local")
-                .couleur(getStatusColor(idStatut))
-                .icone(getProblemeIcone(row[4] != null ? row[4].toString() : null))
-                .build();
     }
     
     /**
