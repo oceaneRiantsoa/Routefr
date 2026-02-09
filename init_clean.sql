@@ -123,7 +123,6 @@ CREATE TABLE signalement_firebase (
     probleme_nom VARCHAR(200),
     description TEXT,
     photo_url TEXT,
-    photos TEXT,  -- JSON array de photos en base64
     
     -- Données financières
     surface NUMERIC(10,2),
@@ -217,6 +216,12 @@ CREATE TABLE security_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE signalement_firebase ADD COLUMN IF NOT EXISTS photos TEXT;
+ALTER TABLE signalement_firebase ADD COLUMN IF NOT EXISTS needs_firebase_sync BOOLEAN DEFAULT FALSE;
+
+-- Index pour retrouver rapidement les signalements modifiés à synchroniser
+CREATE INDEX IF NOT EXISTS idx_signalement_firebase_needs_sync ON signalement_firebase(needs_firebase_sync) WHERE needs_firebase_sync = TRUE;
+
 -- ============================================================================
 -- SECTION 6: DONNÉES DE TEST / RÉFÉRENCE
 -- ============================================================================
@@ -253,10 +258,15 @@ VALUES (30, 5, 15, TRUE);
 -- IMPORTANT: password_hash = BCrypt de "password123" et password_plain_temp pour la sync Firebase
 INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase, password_hash, password_plain_temp) 
 VALUES 
-    ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE, 
-     '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123'),
+    ('local-5fa20835-e5ab-44d0-a758-6c3d9af954ab', 'manager@routefr.com', 'Manager Routefr', 'MANAGER', FALSE, 
+     '$2a$10$hJSneLLD//Q4M8zExxj5h.f3KJrbV2AIJaDM6VbtRzFLt0bkVqdiO', '123456'),
     ('user-001', 'user@routefr.com', 'User Test', 'USER', FALSE,
      '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123');
+
+
+
+
+    --  DELETE FROM local_users WHERE email = 'manager@routefr.com';
 
 -- ============================================================================
 -- SECTION 7: SIGNALEMENTS DE TEST
