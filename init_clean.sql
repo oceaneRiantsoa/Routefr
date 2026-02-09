@@ -123,6 +123,7 @@ CREATE TABLE signalement_firebase (
     probleme_nom VARCHAR(200),
     description TEXT,
     photo_url TEXT,
+    photos TEXT,  -- JSON array de photos en base64
     
     -- Données financières
     surface NUMERIC(10,2),
