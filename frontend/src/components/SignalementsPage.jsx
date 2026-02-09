@@ -112,7 +112,7 @@ const SignalementsPage = () => {
   // Mettre à jour l'avancement d'un signalement
   const handleUpdateAvancement = async (signalementId, newStatut, pourcentage) => {
     if (updatingAvancement) return; // Éviter les doubles clics
-    
+
     setUpdatingAvancement(signalementId);
     try {
       await axios.put(`${API_BASE_URL}/api/manager/signalements/${signalementId}/avancement`, {
@@ -156,18 +156,15 @@ const SignalementsPage = () => {
 
   return (
     <div className="signalements-page">
-      {/* Header */}
-      <header className="signalements-header">
-        <button className="back-button" onClick={() => navigate('/manager')}>
-          ← Retour au Manager
+      {/* Stats header */}
+      <div className="page-top-bar">
+        <span className="total-badge">
+          📋 Total: {totalSignalements} signalement{totalSignalements > 1 ? 's' : ''}
+        </span>
+        <button className="refresh-btn" onClick={loadData}>
+          🔄 Actualiser
         </button>
-        <h1>🗺️ Gestion des Signalements</h1>
-        <div className="header-stats">
-          <span className="total-badge">
-            Total: {totalSignalements} signalement{totalSignalements > 1 ? 's' : ''}
-          </span>
-        </div>
-      </header>
+      </div>
 
       {/* Message de succès */}
       {successMessage && (
@@ -219,8 +216,8 @@ const SignalementsPage = () => {
                 key={filter}
                 className={`filter-btn ${selectedFilter === filter ? 'active' : ''}`}
                 onClick={() => setSelectedFilter(filter)}
-                style={selectedFilter === filter && statutInfo ? 
-                  { backgroundColor: statutInfo.color, borderColor: statutInfo.color } : 
+                style={selectedFilter === filter && statutInfo ?
+                  { backgroundColor: statutInfo.color, borderColor: statutInfo.color } :
                   {}
                 }
               >
@@ -259,7 +256,7 @@ const SignalementsPage = () => {
                 <div key={signalement.id} className="signalement-card">
                   <div className="signalement-header">
                     <span className="signalement-id">#{signalement.id}</span>
-                    <span 
+                    <span
                       className="status-badge"
                       style={{ backgroundColor: avancementInfo.color }}
                     >
@@ -270,16 +267,16 @@ const SignalementsPage = () => {
                   {/* Barre de progression */}
                   <div className="avancement-section">
                     <div className="progress-bar-container">
-                      <div 
+                      <div
                         className="progress-bar-fill"
-                        style={{ 
+                        style={{
                           width: `${avancement}%`,
                           backgroundColor: avancementInfo.color
                         }}
                       />
                       <span className="progress-text">{avancement}% - {avancementInfo.libelle}</span>
                     </div>
-                    
+
                     {/* Boutons d'avancement */}
                     <div className="avancement-buttons">
                       <button
@@ -325,7 +322,7 @@ const SignalementsPage = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="signalement-body">
                     <div className="signalement-info">
                       <div className="info-row">
@@ -343,7 +340,7 @@ const SignalementsPage = () => {
                         <span className="info-value">{formatDate(signalement.dateSignalement)}</span>
                       </div>
                     </div>
-                    
+
                     <div className="signalement-details">
                       <div className="detail-item">
                         <span className="detail-label">📐 Surface</span>
@@ -377,7 +374,7 @@ const SignalementsPage = () => {
                         Modifié le {formatDate(signalement.dateModification)}
                       </span>
                     )}
-                    <button 
+                    <button
                       className="edit-btn"
                       onClick={() => handleEdit(signalement)}
                     >

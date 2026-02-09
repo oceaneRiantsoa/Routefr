@@ -46,8 +46,8 @@ const StatistiquesPage = () => {
           <span className="delai-value">{delai} jours</span>
         </div>
         <div className="delai-bar-container">
-          <div 
-            className="delai-bar" 
+          <div
+            className="delai-bar"
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
         </div>
@@ -97,16 +97,13 @@ const StatistiquesPage = () => {
 
   return (
     <div className="statistiques-page">
-      {/* Header */}
-      <header className="stats-header">
-        <button className="back-button" onClick={() => navigate('/manager')}>
-          ← Retour au Manager
-        </button>
-        <h1>📊 Statistiques des Signalements</h1>
-        <button className="refresh-button" onClick={loadStatistiques}>
+      {/* Top bar */}
+      <div className="page-top-bar">
+        <span className="page-subtitle">Analyse des performances et délais</span>
+        <button className="refresh-btn" onClick={loadStatistiques}>
           🔄 Actualiser
         </button>
-      </header>
+      </div>
 
       {/* Cartes de compteurs */}
       <section className="counters-section">
@@ -188,7 +185,7 @@ const StatistiquesPage = () => {
       {/* Délais de traitement */}
       <section className="delais-section">
         <h2>⏱️ Délais de traitement moyens</h2>
-        
+
         <div className="delais-cards">
           <div className="delai-card">
             <div className="delai-card-icon">📅</div>
@@ -225,10 +222,10 @@ const StatistiquesPage = () => {
       {/* Délais par type de problème */}
       <section className="delais-type-section">
         <h2>📈 Délai de traitement par type de signalement</h2>
-        
+
         {Object.keys(delaisParType).length > 0 ? (
           <div className="delais-list">
-            {Object.entries(delaisParType).map(([type, delai]) => 
+            {Object.entries(delaisParType).map(([type, delai]) =>
               renderDelaiBar(type, delai, maxDelai)
             )}
           </div>
