@@ -278,12 +278,12 @@ const SyncPage = () => {
         <h3>Comment ca marche ?</h3>
         <div className="info-cards">
           <div className="info-card">
-            <div className="info-icon">📥</div>
+            <div className="info-icon"></div>
             <h4>Pull</h4>
             <p>Recupere les signalements crees par les utilisateurs depuis application mobile Firebase.</p>
           </div>
           <div className="info-card">
-            <div className="info-icon">📤</div>
+            <div className="info-icon"></div>
             <h4>Push</h4>
             <p>Envoie les signalements traites vers Firebase pour affichage mobile.</p>
           </div>
@@ -292,7 +292,7 @@ const SyncPage = () => {
 
       {/* Section Synchronisation Utilisateurs */}
       <div className="users-sync-section">
-        <h2>👥 Synchronisation des Utilisateurs</h2>
+        <h2>Synchronisation des Utilisateurs</h2>
         <p>Les comptes créés localement doivent être synchronisés vers Firebase pour fonctionner sur l'application mobile.</p>
 
         {usersSyncStatus && (
@@ -335,16 +335,16 @@ const SyncPage = () => {
           onClick={handleSyncUsers}
           disabled={syncingUsers || (usersSyncStatus?.usersNotSynced === 0)}
         >
-          {syncingUsers ? '⏳ Synchronisation...' : '🔄 Synchroniser les utilisateurs vers Firebase'}
+          {syncingUsers ? 'Synchronisation...' : 'Synchroniser les utilisateurs vers Firebase'}
         </button>
 
         {usersSyncResult && (
           <div className={`users-sync-result ${usersSyncResult.success ? 'success' : 'error'}`}>
-            <h4>{usersSyncResult.success ? '✅ Succès' : '⚠️ Terminé avec erreurs'}</h4>
+            <h4>{usersSyncResult.success ? 'Succès' : 'Terminé avec erreurs'}</h4>
             <p>{usersSyncResult.message}</p>
             <div className="sync-details">
-              <span>📤 Envoyés: {usersSyncResult.pushedToFirebase || 0}</span>
-              {usersSyncResult.errors > 0 && <span>❌ Erreurs: {usersSyncResult.errors}</span>}
+              <span>Envoyés: {usersSyncResult.pushedToFirebase || 0}</span>
+              {usersSyncResult.errors > 0 && <span>Erreurs: {usersSyncResult.errors}</span>}
             </div>
             {usersSyncResult.errorDetails && usersSyncResult.errorDetails.length > 0 && (
               <div className="error-details">

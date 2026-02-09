@@ -9,17 +9,17 @@ const API_BASE_URL = 'http://localhost:8086';
 
 // Mapping des statuts (idStatut -> infos)
 const STATUTS = {
-  10: { code: 'EN_ATTENTE', libelle: 'En attente', color: '#f39c12', icon: '🟡' },
-  20: { code: 'EN_COURS', libelle: 'En cours', color: '#3498db', icon: '🔵' },
-  30: { code: 'TRAITE', libelle: 'Traité', color: '#27ae60', icon: '🟢' },
-  40: { code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '🔴' }
+  10: { code: 'EN_ATTENTE', libelle: 'En attente', color: '#f39c12', icon: '' },
+  20: { code: 'EN_COURS', libelle: 'En cours', color: '#3498db', icon: '' },
+  30: { code: 'TRAITE', libelle: 'Traité', color: '#27ae60', icon: '' },
+  40: { code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '' }
 };
 
 // Mapping des avancements
 const AVANCEMENTS = {
-  0: { statut: 'nouveau', libelle: 'Nouveau', color: '#f39c12', icon: '🟡' },
-  50: { statut: 'en_cours', libelle: 'En cours', color: '#3498db', icon: '🔵' },
-  100: { statut: 'termine', libelle: 'Terminé', color: '#27ae60', icon: '🟢' }
+  0: { statut: 'nouveau', libelle: 'Nouveau', color: '#f39c12', icon: '' },
+  50: { statut: 'en_cours', libelle: 'En cours', color: '#3498db', icon: '' },
+  100: { statut: 'termine', libelle: 'Terminé', color: '#27ae60', icon: '' }
 };
 
 // Formatage des nombres
@@ -159,45 +159,45 @@ const SignalementsPage = () => {
       {/* Stats header */}
       <div className="page-top-bar">
         <span className="total-badge">
-          📋 Total: {totalSignalements} signalement{totalSignalements > 1 ? 's' : ''}
+          Total: {totalSignalements} signalement{totalSignalements > 1 ? 's' : ''}
         </span>
         <button className="refresh-btn" onClick={loadData}>
-          🔄 Actualiser
+          Actualiser
         </button>
       </div>
 
       {/* Message de succès */}
       {successMessage && (
         <div className="success-message">
-          ✅ {successMessage}
+          {successMessage}
         </div>
       )}
 
       {/* Statistiques */}
       <div className="stats-container">
         <div className="stat-card stat-attente">
-          <div className="stat-icon">🟡</div>
+          <div className="stat-icon"></div>
           <div className="stat-info">
             <span className="stat-value">{statistiques.EN_ATTENTE || 0}</span>
             <span className="stat-label">En attente</span>
           </div>
         </div>
         <div className="stat-card stat-encours">
-          <div className="stat-icon">🔵</div>
+          <div className="stat-icon"></div>
           <div className="stat-info">
             <span className="stat-value">{statistiques.EN_COURS || 0}</span>
             <span className="stat-label">En cours</span>
           </div>
         </div>
         <div className="stat-card stat-traite">
-          <div className="stat-icon">🟢</div>
+          <div className="stat-icon"></div>
           <div className="stat-info">
             <span className="stat-value">{statistiques.TRAITE || 0}</span>
             <span className="stat-label">Traités</span>
           </div>
         </div>
         <div className="stat-card stat-rejete">
-          <div className="stat-icon">🔴</div>
+          <div className="stat-icon"></div>
           <div className="stat-info">
             <span className="stat-value">{statistiques.REJETE || 0}</span>
             <span className="stat-label">Rejetés</span>
@@ -237,14 +237,14 @@ const SignalementsPage = () => {
           </div>
         ) : error ? (
           <div className="error-container">
-            <p>❌ {error}</p>
+            <p>{error}</p>
             <button onClick={loadData} className="retry-btn">
               Réessayer
             </button>
           </div>
         ) : filteredSignalements.length === 0 ? (
           <div className="empty-container">
-            <p>📭 Aucun signalement {selectedFilter !== 'TOUS' ? 'avec ce statut' : ''}</p>
+            <p>Aucun signalement {selectedFilter !== 'TOUS' ? 'avec ce statut' : ''}</p>
           </div>
         ) : (
           <div className="signalements-list">
@@ -285,7 +285,7 @@ const SignalementsPage = () => {
                         disabled={updatingAvancement === signalement.id || avancement === 0}
                         title="Nouveau (0%)"
                       >
-                        🟡 0%
+                        0%
                       </button>
                       <button
                         className={`avancement-btn en-cours ${avancement === 50 ? 'active' : ''}`}
@@ -293,7 +293,7 @@ const SignalementsPage = () => {
                         disabled={updatingAvancement === signalement.id || avancement === 50}
                         title="En cours (50%)"
                       >
-                        🔵 50%
+                        50%
                       </button>
                       <button
                         className={`avancement-btn termine ${avancement === 100 ? 'active' : ''}`}
@@ -301,23 +301,23 @@ const SignalementsPage = () => {
                         disabled={updatingAvancement === signalement.id || avancement === 100}
                         title="Terminé (100%)"
                       >
-                        🟢 100%
+                        100%
                       </button>
                     </div>
 
                     {/* Dates d'avancement */}
                     <div className="avancement-dates">
                       <span className="date-item">
-                        📅 Créé: {formatDate(signalement.dateCreationFirebase || signalement.dateSignalement)}
+                        Créé: {formatDate(signalement.dateCreationFirebase || signalement.dateSignalement)}
                       </span>
                       {signalement.dateDebutTravaux && (
                         <span className="date-item">
-                          🚧 Début: {formatDate(signalement.dateDebutTravaux)}
+                          Début: {formatDate(signalement.dateDebutTravaux)}
                         </span>
                       )}
                       {signalement.dateFinTravaux && (
                         <span className="date-item">
-                          ✅ Fin: {formatDate(signalement.dateFinTravaux)}
+                          Fin: {formatDate(signalement.dateFinTravaux)}
                         </span>
                       )}
                     </div>
@@ -326,34 +326,34 @@ const SignalementsPage = () => {
                   <div className="signalement-body">
                     <div className="signalement-info">
                       <div className="info-row">
-                        <span className="info-label">📍 Localisation:</span>
+                        <span className="info-label">Localisation:</span>
                         <span className="info-value">
                           {signalement.latitude?.toFixed(5)}, {signalement.longitude?.toFixed(5)}
                         </span>
                       </div>
                       <div className="info-row">
-                        <span className="info-label">🔧 Problème:</span>
+                        <span className="info-label">Problème:</span>
                         <span className="info-value">{signalement.probleme || signalement.problemeNom || '-'}</span>
                       </div>
                       <div className="info-row">
-                        <span className="info-label">📅 Date:</span>
+                        <span className="info-label">Date:</span>
                         <span className="info-value">{formatDate(signalement.dateSignalement)}</span>
                       </div>
                     </div>
 
                     <div className="signalement-details">
                       <div className="detail-item">
-                        <span className="detail-label">📐 Surface</span>
+                        <span className="detail-label">Surface</span>
                         <span className="detail-value">{formatNumber(signalement.surface)} m²</span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-label">💰 Budget estimé</span>
+                        <span className="detail-label">Budget estimé</span>
                         <span className="detail-value">
                           {signalement.budgetEstime ? `${formatNumber(signalement.budgetEstime)} Ar` : `${formatNumber(signalement.budgetCalcule)} Ar (calculé)`}
                         </span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-label">🏢 Entreprise</span>
+                        <span className="detail-label">Entreprise</span>
                         <span className="detail-value">
                           {signalement.entrepriseNom || '-'}
                         </span>
@@ -362,7 +362,7 @@ const SignalementsPage = () => {
 
                     {signalement.commentaires && (
                       <div className="signalement-comment">
-                        <span className="comment-label">💬 Commentaire:</span>
+                        <span className="comment-label">Commentaire:</span>
                         <span className="comment-text">{signalement.commentaires}</span>
                       </div>
                     )}
@@ -378,7 +378,7 @@ const SignalementsPage = () => {
                       className="edit-btn"
                       onClick={() => handleEdit(signalement)}
                     >
-                      ✏️ Modifier
+                      Modifier
                     </button>
                   </div>
                 </div>

@@ -23,10 +23,10 @@ const formatDate = (dateString) => {
 
 // Mapping des statuts
 const STATUTS = [
-  { id: 10, code: 'EN_ATTENTE', libelle: 'En attente', color: '#f39c12', icon: '🟡' },
-  { id: 20, code: 'EN_COURS', libelle: 'En cours', color: '#3498db', icon: '🔵' },
-  { id: 30, code: 'TRAITE', libelle: 'Traité', color: '#27ae60', icon: '🟢' },
-  { id: 40, code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '🔴' }
+  { id: 10, code: 'EN_ATTENTE', libelle: 'En attente', color: '#f39c12', icon: '' },
+  { id: 20, code: 'EN_COURS', libelle: 'En cours', color: '#3498db', icon: '' },
+  { id: 30, code: 'TRAITE', libelle: 'Traité', color: '#27ae60', icon: '' },
+  { id: 40, code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '' }
 ];
 
 const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose }) => {
@@ -87,36 +87,36 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>✏️ Modifier Signalement #{signalement.id}</h2>
+          <h2>Modifier Signalement #{signalement.id}</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Informations en lecture seule */}
           <div className="readonly-section">
-            <h3>📋 Informations du signalement</h3>
+            <h3>Informations du signalement</h3>
             <div className="readonly-grid">
               <div className="readonly-item">
-                <span className="readonly-label">📍 Localisation</span>
+                <span className="readonly-label">Localisation</span>
                 <span className="readonly-value">
                   {signalement.latitude?.toFixed(5)}, {signalement.longitude?.toFixed(5)}
                 </span>
               </div>
               <div className="readonly-item">
-                <span className="readonly-label">🔧 Problème</span>
+                <span className="readonly-label">Problème</span>
                 <span className="readonly-value">{signalement.probleme || '-'}</span>
               </div>
               <div className="readonly-item">
-                <span className="readonly-label">📅 Date du signalement</span>
+                <span className="readonly-label">Date du signalement</span>
                 <span className="readonly-value">{formatDate(signalement.dateSignalement)}</span>
               </div>
               <div className="readonly-item">
-                <span className="readonly-label">💰 Budget calculé</span>
+                <span className="readonly-label">Budget calculé</span>
                 <span className="readonly-value">{formatNumber(signalement.budgetCalcule)} Ar</span>
               </div>
               {signalement.commentaires && (
                 <div className="readonly-item full-width">
-                  <span className="readonly-label">💬 Commentaire original</span>
+                  <span className="readonly-label">Commentaire original</span>
                   <span className="readonly-value">{signalement.commentaires}</span>
                 </div>
               )}
@@ -125,7 +125,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
             {/* Section Photos */}
             {signalement.photos && signalement.photos.length > 0 && (
               <div className="photos-section">
-                <h4>📷 Photos ({signalement.photos.length})</h4>
+                <h4>Photos ({signalement.photos.length})</h4>
                 <div className="photos-grid">
                   {signalement.photos.map((photo, index) => (
                     <div key={index} className="photo-item">
@@ -144,11 +144,11 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
 
           {/* Champs éditables */}
           <div className="editable-section">
-            <h3>📝 Informations Manager</h3>
+            <h3>Informations Manager</h3>
             
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="surface">📐 Surface (m²)</label>
+                <label htmlFor="surface">Surface (m²)</label>
                 <input
                   type="number"
                   id="surface"
@@ -163,7 +163,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
 
               <div className="form-group">
                 <label htmlFor="budgetEstime">
-                  💰 Budget estimé (Ar)
+                  Budget estimé (Ar)
                   {budgetSuggere && (
                     <span className="budget-suggestion">
                       Suggéré: {formatNumber(budgetSuggere)} Ar
@@ -184,7 +184,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
             </div>
 
             <div className="form-group">
-              <label htmlFor="idEntreprise">🏢 Entreprise assignée</label>
+              <label htmlFor="idEntreprise">Entreprise assignée</label>
               <select
                 id="idEntreprise"
                 name="idEntreprise"
@@ -201,7 +201,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
             </div>
 
             <div className="form-group">
-              <label htmlFor="notesManager">📝 Notes du Manager</label>
+              <label htmlFor="notesManager">Notes du Manager</label>
               <textarea
                 id="notesManager"
                 name="notesManager"
@@ -213,7 +213,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
             </div>
 
             <div className="form-group">
-              <label>🔄 Statut</label>
+              <label>Statut</label>
               <div className="status-options">
                 {STATUTS.map(statut => (
                   <label
@@ -242,7 +242,7 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
           {/* Message d'erreur */}
           {error && (
             <div className="error-message">
-              ❌ {error}
+              {error}
             </div>
           )}
 

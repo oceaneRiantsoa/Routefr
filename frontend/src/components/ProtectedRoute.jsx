@@ -53,7 +53,7 @@ const ProtectedRoute = ({ children }) => {
         fontSize: '1.2rem'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🔐</div>
+          <div style={{ fontSize: '3rem', marginBottom: '20px' }}></div>
           <div>Vérification de la session...</div>
         </div>
       </div>

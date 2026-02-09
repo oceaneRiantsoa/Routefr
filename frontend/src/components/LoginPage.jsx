@@ -60,7 +60,7 @@ const LoginPage = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>🛣️ Route Signalement</h1>
+          <h1>Route Signalement</h1>
           <h2>{isRegisterMode ? 'Créer un compte Manager' : 'Connexion Manager'}</h2>
         </div>
 
@@ -111,13 +111,13 @@ const LoginPage = () => {
 
           {error && (
             <div className="alert alert-error">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 
           {success && (
             <div className="alert alert-success">
-              ✅ {success}
+              {success}
             </div>
           )}
 
@@ -127,9 +127,9 @@ const LoginPage = () => {
             disabled={loading}
           >
             {loading ? (
-              <span className="loading-spinner">⏳ Chargement...</span>
+              <span className="loading-spinner">Chargement...</span>
             ) : (
-              isRegisterMode ? '📝 Créer le compte' : '🔐 Se connecter'
+              isRegisterMode ? 'Créer le compte' : 'Se connecter'
             )}
           </button>
         </form>
@@ -154,14 +154,14 @@ const LoginPage = () => {
             className="back-home-button"
             onClick={() => navigate('/')}
           >
-            🏠 Retour à la carte
+            Retour à la carte
           </button>
         </div>
 
         <div className="login-info">
           <p><strong>Compte par défaut :</strong></p>
-          <p>📧 manager@routefr.com</p>
-          <p>🔑 Manager123!</p>
+          <p>manager@routefr.com</p>
+          <p>Manager123!</p>
         </div>
       </div>
     </div>

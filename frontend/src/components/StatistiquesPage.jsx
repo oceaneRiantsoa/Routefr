@@ -62,7 +62,7 @@ const StatistiquesPage = () => {
           <button className="back-button" onClick={() => navigate('/manager')}>
             ← Retour au Manager
           </button>
-          <h1>📊 Statistiques</h1>
+          <h1>Statistiques</h1>
         </header>
         <div className="loading-container">
           <div className="loading-spinner"></div>
@@ -79,12 +79,12 @@ const StatistiquesPage = () => {
           <button className="back-button" onClick={() => navigate('/manager')}>
             ← Retour au Manager
           </button>
-          <h1>📊 Statistiques</h1>
+          <h1>Statistiques</h1>
         </header>
         <div className="error-container">
-          <p className="error-message">❌ {error}</p>
+          <p className="error-message">{error}</p>
           <button onClick={loadStatistiques} className="retry-button">
-            🔄 Réessayer
+            Réessayer
           </button>
         </div>
       </div>
@@ -101,14 +101,14 @@ const StatistiquesPage = () => {
       <div className="page-top-bar">
         <span className="page-subtitle">Analyse des performances et délais</span>
         <button className="refresh-btn" onClick={loadStatistiques}>
-          🔄 Actualiser
+          Actualiser
         </button>
       </div>
 
       {/* Cartes de compteurs */}
       <section className="counters-section">
         <div className="counter-card total">
-          <div className="counter-icon">📋</div>
+          <div className="counter-icon"></div>
           <div className="counter-info">
             <span className="counter-value">{formatNumber(stats?.nombreTotal)}</span>
             <span className="counter-label">Total Signalements</span>
@@ -116,7 +116,7 @@ const StatistiquesPage = () => {
         </div>
 
         <div className="counter-card nouveau">
-          <div className="counter-icon">🟡</div>
+          <div className="counter-icon"></div>
           <div className="counter-info">
             <span className="counter-value">{formatNumber(stats?.nombreNouveau)}</span>
             <span className="counter-label">Nouveau (0%)</span>
@@ -138,7 +138,7 @@ const StatistiquesPage = () => {
         </div>
 
         <div className="counter-card en-cours">
-          <div className="counter-icon">🔵</div>
+          <div className="counter-icon"></div>
           <div className="counter-info">
             <span className="counter-value">{formatNumber(stats?.nombreEnCours)}</span>
             <span className="counter-label">En cours (50%)</span>
@@ -160,7 +160,7 @@ const StatistiquesPage = () => {
         </div>
 
         <div className="counter-card termine">
-          <div className="counter-icon">🟢</div>
+          <div className="counter-icon"></div>
           <div className="counter-info">
             <span className="counter-value">{formatNumber(stats?.nombreTermine)}</span>
             <span className="counter-label">Terminé (100%)</span>
@@ -184,11 +184,11 @@ const StatistiquesPage = () => {
 
       {/* Délais de traitement */}
       <section className="delais-section">
-        <h2>⏱️ Délais de traitement moyens</h2>
+        <h2>Délais de traitement moyens</h2>
 
         <div className="delais-cards">
           <div className="delai-card">
-            <div className="delai-card-icon">📅</div>
+            <div className="delai-card-icon"></div>
             <div className="delai-card-content">
               <span className="delai-card-value">{stats?.delaiMoyenTraitement || 0}</span>
               <span className="delai-card-unit">jours</span>
@@ -198,7 +198,7 @@ const StatistiquesPage = () => {
           </div>
 
           <div className="delai-card">
-            <div className="delai-card-icon">🚧</div>
+            <div className="delai-card-icon"></div>
             <div className="delai-card-content">
               <span className="delai-card-value">{stats?.delaiMoyenDebutTravaux || 0}</span>
               <span className="delai-card-unit">jours</span>
@@ -208,7 +208,7 @@ const StatistiquesPage = () => {
           </div>
 
           <div className="delai-card">
-            <div className="delai-card-icon">🔧</div>
+            <div className="delai-card-icon"></div>
             <div className="delai-card-content">
               <span className="delai-card-value">{stats?.delaiMoyenFinTravaux || 0}</span>
               <span className="delai-card-unit">jours</span>
@@ -221,7 +221,7 @@ const StatistiquesPage = () => {
 
       {/* Délais par type de problème */}
       <section className="delais-type-section">
-        <h2>📈 Délai de traitement par type de signalement</h2>
+        <h2>Délai de traitement par type de signalement</h2>
 
         {Object.keys(delaisParType).length > 0 ? (
           <div className="delais-list">
@@ -239,18 +239,18 @@ const StatistiquesPage = () => {
 
       {/* Légende */}
       <section className="legend-section">
-        <h3>📖 Légende des avancements</h3>
+        <h3>Légende des avancements</h3>
         <div className="legend-items">
           <div className="legend-item">
-            <span className="legend-icon">🟡</span>
+            <span className="legend-icon" style={{background: '#f39c12'}}></span>
             <span className="legend-text"><strong>Nouveau (0%)</strong> - Signalement reçu, non traité</span>
           </div>
           <div className="legend-item">
-            <span className="legend-icon">🔵</span>
+            <span className="legend-icon" style={{background: '#3498db'}}></span>
             <span className="legend-text"><strong>En cours (50%)</strong> - Travaux en cours de réalisation</span>
           </div>
           <div className="legend-item">
-            <span className="legend-icon">🟢</span>
+            <span className="legend-icon" style={{background: '#27ae60'}}></span>
             <span className="legend-text"><strong>Terminé (100%)</strong> - Travaux achevés</span>
           </div>
         </div>

@@ -112,7 +112,7 @@ const BlockedUsersPage = () => {
       <div className="page-top-bar">
         <span className="page-subtitle">Gestion des comptes et paramètres de sécurité</span>
         <button className="refresh-btn" onClick={fetchBlockedUsers} disabled={loading}>
-          🔄 Actualiser
+          Actualiser
         </button>
       </div>
 

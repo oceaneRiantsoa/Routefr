@@ -97,22 +97,22 @@ const MapView = () => {
 
       {/* Tableau récapitulatif */}
       <div className="recap-panel">
-        <h3>📊 Récapitulatif</h3>
+        <h3>Récapitulatif</h3>
         {loading ? (
           <p>Chargement...</p>
         ) : recap ? (
           <table className="recap-table">
             <tbody>
               <tr>
-                <td>📍 Nb de points</td>
+                <td>Nb de points</td>
                 <td><strong>{recap.nbPoints}</strong></td>
               </tr>
               <tr>
-                <td>📐 Surface totale</td>
+                <td>Surface totale</td>
                 <td><strong>{formatNumber(recap.totalSurface)} m²</strong></td>
               </tr>
               <tr>
-                <td>📈 Avancement</td>
+                <td>Avancement</td>
                 <td>
                   <div className="progress-bar">
                     <div
@@ -124,7 +124,7 @@ const MapView = () => {
                 </td>
               </tr>
               <tr>
-                <td>💰 Budget total</td>
+                <td>Budget total</td>
                 <td><strong>{formatNumber(recap.totalBudget)} Ar</strong></td>
               </tr>
             </tbody>
@@ -177,11 +177,11 @@ const MapView = () => {
                 <table className="popup-table">
                   <tbody>
                     <tr>
-                      <td>📅 Date:</td>
+                      <td>Date:</td>
                       <td>{formatDate(point.dateSignalement)}</td>
                     </tr>
                     <tr>
-                      <td>🔄 Statut:</td>
+                      <td>Statut:</td>
                       <td>
                         <span
                           className="status-badge"
@@ -192,27 +192,27 @@ const MapView = () => {
                       </td>
                     </tr>
                     <tr>
-                      <td>📐 Surface:</td>
+                      <td>Surface:</td>
                       <td>{formatNumber(point.surface)} m²</td>
                     </tr>
                     <tr>
-                      <td>💰 Budget:</td>
+                      <td>Budget:</td>
                       <td>{formatNumber(point.budget)} Ar</td>
                     </tr>
                     <tr>
-                      <td>🏢 Entreprise:</td>
+                      <td>Entreprise:</td>
                       <td>{point.entreprise || 'Non assignée'}</td>
                     </tr>
                   </tbody>
                 </table>
                 {point.commentaires && (
                   <div className="popup-comment">
-                    <em>💬 {point.commentaires}</em>
+                    <em>{point.commentaires}</em>
                   </div>
                 )}
                 {point.photos && point.photos.length > 0 && (
                   <div className="popup-photos">
-                    <strong>📷 Photos ({point.photos.length})</strong>
+                    <strong>Photos ({point.photos.length})</strong>
                     <div className="popup-photos-grid">
                       {point.photos.map((photo, idx) => (
                         <img 

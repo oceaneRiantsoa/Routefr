@@ -65,7 +65,7 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
       const result = await register(formData.email, formData.password, formData.displayName);
 
       if (result.success) {
-        setSuccess(`✅ Utilisateur "${formData.displayName}" créé avec succès ! L'utilisateur peut maintenant se connecter à l'application mobile avec ces identifiants.`);
+        setSuccess(`Utilisateur "${formData.displayName}" créé avec succès ! L'utilisateur peut maintenant se connecter à l'application mobile avec ces identifiants.`);
         
         // Réinitialiser le formulaire
         setFormData({
@@ -113,7 +113,7 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>👤 Créer un nouvel utilisateur</h2>
+          <h2>Créer un nouvel utilisateur</h2>
           <button className="close-button" onClick={handleClose}>×</button>
         </div>
 
@@ -125,7 +125,7 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
 
           {error && (
             <div className="alert alert-error">
-              ❌ {error}
+              {error}
             </div>
           )}
 
@@ -138,7 +138,6 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="displayName">
-                <span className="label-icon">📝</span>
                 Nom d'affichage
               </label>
               <input
@@ -155,7 +154,6 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
 
             <div className="form-group">
               <label htmlFor="email">
-                <span className="label-icon">📧</span>
                 Adresse email
               </label>
               <input
@@ -172,7 +170,6 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
 
             <div className="form-group">
               <label htmlFor="password">
-                <span className="label-icon">🔒</span>
                 Mot de passe
               </label>
               <input
@@ -189,7 +186,6 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
 
             <div className="form-group">
               <label htmlFor="confirmPassword">
-                <span className="label-icon">🔒</span>
                 Confirmer le mot de passe
               </label>
               <input
