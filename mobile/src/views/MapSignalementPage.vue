@@ -8,7 +8,8 @@
         </ion-buttons>
         <ion-title>
           <div class="header-title">
-            <span>🗺️ Signalement Tana</span>
+            <ion-icon :icon="mapOutline" class="header-icon"></ion-icon>
+            <span>Signalement Tana</span>
           </div>
         </ion-title>
         <ion-buttons slot="end">
@@ -35,13 +36,13 @@
           <div class="user-avatar">{{ userInitial }}</div>
           <div class="user-info">
             <div class="user-email">{{ userEmail }}</div>
-            <div class="user-status">🟢 Connecté</div>
+            <div class="user-status"><ion-icon :icon="ellipseOutline" class="status-dot"></ion-icon> Connecté</div>
           </div>
         </div>
 
         <ion-list lines="none" class="menu-list">
           <ion-list-header>
-            <ion-label>📊 Affichage</ion-label>
+            <ion-label><ion-icon :icon="barChartOutline" class="section-icon"></ion-icon> Affichage</ion-label>
           </ion-list-header>
           
           <ion-item button @click="setFilterMode('all')" :class="{ active: filterMode === 'all' }">
@@ -57,7 +58,7 @@
           </ion-item>
 
           <ion-list-header>
-            <ion-label>⚙️ Actions</ion-label>
+            <ion-label><ion-icon :icon="settingsOutline" class="section-icon"></ion-icon> Actions</ion-label>
           </ion-list-header>
           
           <ion-item button @click="openStatsFromMenu">
@@ -154,7 +155,7 @@
           <div class="new-signalement-container">
             <!-- Position -->
             <div class="location-box">
-              <div class="location-icon">📍</div>
+              <div class="location-icon"><ion-icon :icon="locationOutline"></ion-icon></div>
               <div class="location-text">
                 <span class="location-title">Position sélectionnée</span>
                 <span class="location-coords">{{ newSignalement.latitude.toFixed(4) }}°, {{ newSignalement.longitude.toFixed(4) }}°</span>
@@ -180,7 +181,7 @@
                 :class="{ 'selected': newSignalement.problemeId === probleme.id }"
                 @click="selectProbleme(probleme)"
               >
-                <span class="problem-icon">{{ probleme.icone }}</span>
+                <ion-icon :icon="getIonIcon(probleme.icone)" class="problem-icon"></ion-icon>
                 <span class="problem-name">{{ probleme.nom }}</span>
                 <span class="problem-badge" :class="'priority-' + probleme.priorite">
                   {{ getPrioriteLabel(probleme.priorite) }}
@@ -203,7 +204,8 @@
 
             <!-- Section Photos -->
             <div class="form-section-title" v-if="newSignalement.problemeId">
-              <span>📷 Photos (optionnel - max 5)</span>
+              <ion-icon :icon="imageOutline" class="section-icon"></ion-icon>
+              <span>Photos (optionnel - max 5)</span>
             </div>
 
             <div class="photos-section" v-if="newSignalement.problemeId">
@@ -265,7 +267,7 @@
       <ion-modal :is-open="showStatsModal" @did-dismiss="showStatsModal = false">
         <ion-header>
           <ion-toolbar color="tertiary">
-            <ion-title>📊 Récapitulatif</ion-title>
+            <ion-title><ion-icon :icon="barChartOutline" style="margin-right:8px;vertical-align:middle"></ion-icon>Récapitulatif</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="showStatsModal = false">
                 <ion-icon :icon="closeOutline"></ion-icon>
@@ -280,11 +282,11 @@
             <div class="stats-cards">
               <div class="stat-card card-blue">
                 <div class="stat-value">{{ currentStats.totalPoints }}</div>
-                <div class="stat-label">📍 Total signalements</div>
+                <div class="stat-label"><ion-icon :icon="pinOutline" class="stat-icon"></ion-icon> Total signalements</div>
               </div>
               <div class="stat-card card-green">
                 <div class="stat-value">{{ currentStats.avancementPercent }}%</div>
-                <div class="stat-label">✅ Taux résolution</div>
+                <div class="stat-label"><ion-icon :icon="checkmarkCircleOutline" class="stat-icon"></ion-icon> Taux résolution</div>
               </div>
             </div>
 
@@ -314,7 +316,7 @@
               <h3 class="section-title">Par type de problème</h3>
               <div class="type-list">
                 <div v-for="probleme in typesProblemes" :key="probleme.id" class="type-row">
-                  <span class="type-icon">{{ probleme.icone }}</span>
+                  <ion-icon :icon="getIonIcon(probleme.icone)" class="type-icon"></ion-icon>
                   <span class="type-name">{{ probleme.nom }}</span>
                   <span class="type-count">{{ currentStats.parProbleme[probleme.id] || 0 }}</span>
                 </div>
@@ -323,7 +325,7 @@
 
             <!-- Entreprises -->
             <div class="enterprise-section">
-              <h3 class="section-title">🏢 Entreprises partenaires</h3>
+              <h3 class="section-title"><ion-icon :icon="businessOutline" class="section-icon"></ion-icon> Entreprises partenaires</h3>
               <div class="enterprise-list">
                 <div v-for="entreprise in entreprises" :key="entreprise.id" class="enterprise-row">
                   <div class="enterprise-info">
@@ -342,7 +344,7 @@
       <ion-modal :is-open="showFilterModal" @did-dismiss="showFilterModal = false">
         <ion-header>
           <ion-toolbar>
-            <ion-title>🔍 Filtres</ion-title>
+            <ion-title><ion-icon :icon="filterOutline" style="margin-right:8px;vertical-align:middle"></ion-icon>Filtres</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="showFilterModal = false">
                 <ion-icon :icon="closeOutline"></ion-icon>
@@ -371,7 +373,7 @@
                   :class="{ 'active': filterProbleme === p.id }"
                   @click="filterProbleme = p.id"
                 >
-                  {{ p.icone }} {{ p.nom }}
+                  <ion-icon :icon="getIonIcon(p.icone)" style="margin-right:4px;vertical-align:middle;"></ion-icon> {{ p.nom }}
                 </button>
               </div>
             </div>
@@ -392,21 +394,21 @@
                   :class="{ 'active': filterStatus === 'nouveau' }"
                   @click="filterStatus = 'nouveau'"
                 >
-                  🔴 Nouveau
+                  Nouveau
                 </button>
                 <button 
                   class="filter-btn btn-orange"
                   :class="{ 'active': filterStatus === 'en_cours' }"
                   @click="filterStatus = 'en_cours'"
                 >
-                  🟡 En cours
+                  En cours
                 </button>
                 <button 
                   class="filter-btn btn-green"
                   :class="{ 'active': filterStatus === 'termine' }"
                   @click="filterStatus = 'termine'"
                 >
-                  🟢 Terminé
+                  Terminé
                 </button>
               </div>
             </div>
@@ -448,7 +450,7 @@
             <!-- Infos -->
             <div class="detail-info">
               <div class="info-row">
-                <span class="info-icon">📅</span>
+                <span class="info-icon"><ion-icon :icon="calendarOutline"></ion-icon></span>
                 <div class="info-content">
                   <span class="info-label">Date</span>
                   <span class="info-value">{{ formatDate(selectedSignalement.dateCreation) }}</span>
@@ -456,7 +458,7 @@
               </div>
 
               <div class="info-row">
-                <span class="info-icon">📍</span>
+                <span class="info-icon"><ion-icon :icon="pinOutline"></ion-icon></span>
                 <div class="info-content">
                   <span class="info-label">Position</span>
                   <span class="info-value">{{ selectedSignalement.latitude.toFixed(5) }}, {{ selectedSignalement.longitude.toFixed(5) }}</span>
@@ -464,7 +466,7 @@
               </div>
 
               <div class="info-row" v-if="selectedSignalement.description">
-                <span class="info-icon">📝</span>
+                <span class="info-icon"><ion-icon :icon="documentTextOutline"></ion-icon></span>
                 <div class="info-content">
                   <span class="info-label">Description</span>
                   <span class="info-value">{{ selectedSignalement.description }}</span>
@@ -472,7 +474,7 @@
               </div>
 
               <div class="info-row">
-                <span class="info-icon">👤</span>
+                <span class="info-icon"><ion-icon :icon="personCircleOutline"></ion-icon></span>
                 <div class="info-content">
                   <span class="info-label">Signalé par</span>
                   <span class="info-value">{{ selectedSignalement.userEmail }}</span>
@@ -481,7 +483,7 @@
 
               <!-- Photos du signalement -->
               <div class="info-row photos-row" v-if="selectedSignalement.photos && selectedSignalement.photos.length > 0">
-                <span class="info-icon">📷</span>
+                <span class="info-icon"><ion-icon :icon="imageOutline"></ion-icon></span>
                 <div class="info-content">
                   <span class="info-label">Photos ({{ selectedSignalement.photos.length }})</span>
                   <div class="detail-photos-grid">
@@ -541,7 +543,13 @@ import {
   addOutline, closeOutline, statsChartOutline, logOutOutline, trashOutline,
   filterOutline, globeOutline, personOutline, locateOutline,
   closeCircle, sendOutline, locationOutline, refreshOutline, arrowBackOutline,
-  cameraOutline, imagesOutline, closeCircleOutline, navigateOutline
+  cameraOutline, imagesOutline, closeCircleOutline, navigateOutline,
+  mapOutline, barChartOutline, settingsOutline, checkmarkCircleOutline,
+  ellipseOutline, timeOutline, calendarOutline, pinOutline, createOutline,
+  personCircleOutline, businessOutline, alertCircleOutline,
+  warningOutline, constructOutline, waterOutline, flashOutline,
+  walkOutline, trashBinOutline, megaphoneOutline, flagOutline,
+  layersOutline, shieldCheckmarkOutline, documentTextOutline, imageOutline
 } from 'ionicons/icons';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -872,7 +880,7 @@ const submitSignalement = async () => {
     });
 
     showToast.value = true;
-    toastMessage.value = '✅ Signalement envoyé!';
+    toastMessage.value = 'Signalement envoyé !';
     toastColor.value = 'success';
 
     showProblemSelector.value = false;
@@ -884,7 +892,7 @@ const submitSignalement = async () => {
 
   } catch (error: any) {
     showToast.value = true;
-    toastMessage.value = `❌ Erreur: ${error.message}`;
+    toastMessage.value = `Erreur: ${error.message}`;
     toastColor.value = 'danger';
   } finally {
     uploadingPhotos.value = false;
@@ -898,7 +906,7 @@ const takePhoto = async () => {
     if (photo) {
       signalementPhotos.value.push(photo);
       showToast.value = true;
-      toastMessage.value = '📸 Photo ajoutée';
+      toastMessage.value = 'Photo ajoutée';
       toastColor.value = 'success';
     }
     // Si photo est null, l'utilisateur a annulé - pas de message d'erreur
@@ -917,12 +925,12 @@ const pickPhotos = async () => {
       if (remaining > 0) {
         signalementPhotos.value.push(...photos.slice(0, remaining));
         showToast.value = true;
-        toastMessage.value = `📸 ${Math.min(photos.length, remaining)} photo(s) ajoutée(s)`;
+        toastMessage.value = `${Math.min(photos.length, remaining)} photo(s) ajoutée(s)`;
         toastColor.value = 'success';
       }
       if (signalementPhotos.value.length >= 5) {
         showToast.value = true;
-        toastMessage.value = '📸 Maximum 5 photos atteint';
+        toastMessage.value = 'Maximum 5 photos atteint';
         toastColor.value = 'warning';
       }
     }
@@ -1024,13 +1032,13 @@ const useMyLocation = async () => {
     }
     
     showToast.value = true;
-    toastMessage.value = '📍 Position mise à jour!';
+    toastMessage.value = 'Position mise à jour';
     toastColor.value = 'success';
     
   } catch (error: any) {
     console.error('Erreur géolocalisation:', error);
     showToast.value = true;
-    toastMessage.value = `❌ ${error.message || 'Impossible d\'obtenir la position'}`;
+    toastMessage.value = `${error.message || 'Impossible d\'obtenir la position'}`;
     toastColor.value = 'danger';
   } finally {
     gettingLocation.value = false;
@@ -1053,11 +1061,11 @@ const deleteCurrentSignalement = async () => {
             await signalementService.deleteSignalement(selectedSignalement.value!.id!);
             showDetailModal.value = false;
             showToast.value = true;
-            toastMessage.value = '✅ Supprimé';
+            toastMessage.value = 'Supprimé';
             toastColor.value = 'success';
           } catch (error: any) {
             showToast.value = true;
-            toastMessage.value = `❌ Erreur`;
+            toastMessage.value = 'Erreur lors de la suppression';
             toastColor.value = 'danger';
           }
         }
@@ -1101,9 +1109,9 @@ const getStatusColor = (status?: string) => {
 
 const getStatusLabel = (status?: string) => {
   switch (status) {
-    case 'nouveau': return '🔴 Nouveau';
-    case 'en_cours': return '🟡 En cours';
-    case 'termine': return '🟢 Terminé';
+    case 'nouveau': return 'Nouveau';
+    case 'en_cours': return 'En cours';
+    case 'termine': return 'Terminé';
     default: return status;
   }
 };
@@ -1128,7 +1136,26 @@ const getProblemeNom = (id: string) => {
 };
 
 const getProblemeIcon = (id: string) => {
-  return typesProblemes.value.find(p => p.id === id)?.icone || '📌';
+  return typesProblemes.value.find(p => p.id === id)?.icone || 'pin-outline';
+};
+
+// Mapping des noms d'icônes vers les objets Ionicon importés
+const ionIconMap: Record<string, string> = {
+  'construct-outline': constructOutline,
+  'water-outline': waterOutline,
+  'warning-outline': warningOutline,
+  'flash-outline': flashOutline,
+  'walk-outline': walkOutline,
+  'trash-bin-outline': trashBinOutline,
+  'flag-outline': flagOutline,
+  'pin-outline': pinOutline,
+  'alert-circle-outline': alertCircleOutline,
+  'time-outline': timeOutline,
+  'checkmark-circle-outline': checkmarkCircleOutline,
+};
+
+const getIonIcon = (name: string): string => {
+  return ionIconMap[name] || pinOutline;
 };
 
 const getEntrepriseCount = (entrepriseId: string): number => {
@@ -1177,10 +1204,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ============================================================
+   DESIGN PROFESSIONNEL — Couleurs unies, Ionicons partout
+   ============================================================ */
+
 /* ===== HEADER ===== */
 .header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 17px;
+}
+
+.header-icon {
+  font-size: 20px;
 }
 
 .header-btn {
@@ -1189,10 +1227,10 @@ onUnmounted(() => {
 
 .filter-badge {
   position: absolute;
-  top: 0;
-  right: 0;
-  background: #ef4444;
-  color: white;
+  top: 2px;
+  right: 2px;
+  background: #dc2626;
+  color: #fff;
   font-size: 10px;
   width: 16px;
   height: 16px;
@@ -1200,29 +1238,29 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
 }
 
-/* ===== MENU ===== */
+/* ===== MENU LATÉRAL ===== */
 .menu-user-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 16px;
-  background: linear-gradient(135deg, #3880ff, #5260ff);
-  color: white;
+  padding: 24px 20px;
+  background: #1a56db;
+  color: #ffffff;
 }
 
 .user-avatar {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .user-email {
@@ -1232,25 +1270,40 @@ onUnmounted(() => {
 
 .user-status {
   font-size: 12px;
-  opacity: 0.9;
+  opacity: 0.85;
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-dot {
+  font-size: 10px;
+  color: #4ade80;
+}
+
+.section-icon {
+  font-size: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 
 .menu-list ion-item {
   --padding-start: 16px;
-  margin: 4px 8px;
+  margin: 2px 8px;
   border-radius: 8px;
+  font-size: 14px;
 }
 
 .menu-list ion-item.active {
-  --background: rgba(56, 128, 255, 0.1);
+  --background: rgba(26, 86, 219, 0.08);
 }
 
 /* ===== FILTRES ACTIFS ===== */
 .active-filters-bar {
-  background: #f8f9fa;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e0e0e0;
+  background: #f1f5f9;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
@@ -1292,27 +1345,27 @@ onUnmounted(() => {
 
 .map-info-bubble {
   position: fixed;
-  top: 70px;
+  top: 68px;
   left: 12px;
-  background: white;
-  padding: 10px 16px;
-  border-radius: 25px;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+  background: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .bubble-count {
   font-weight: 700;
-  font-size: 20px;
-  color: #3880ff;
+  font-size: 18px;
+  color: #1a56db;
 }
 
 .bubble-label {
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* ===== BARRE D'ACTIONS FLOTTANTE ===== */
@@ -1322,11 +1375,11 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 12px;
-  padding: 10px 16px;
-  background: white;
-  border-radius: 50px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.16);
   z-index: 1001;
 }
 
@@ -1334,72 +1387,73 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 16px;
+  gap: 3px;
+  padding: 10px 18px;
   border: none;
-  border-radius: 20px;
+  border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .action-btn ion-icon {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .action-btn span {
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.2px;
 }
 
 .filter-btn {
-  background: #fff3e0;
-  color: #f57c00;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .filter-btn:active {
-  background: #ffe0b2;
+  background: #e2e8f0;
 }
 
 .stats-btn {
-  background: #e8f5e9;
-  color: #388e3c;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .stats-btn:active {
-  background: #c8e6c9;
+  background: #e2e8f0;
 }
 
 .add-btn {
-  background: #ef4444;
-  color: white;
+  background: #1a56db;
+  color: #ffffff;
 }
 
 .add-btn:active {
-  background: #dc2626;
+  background: #164bc1;
 }
 
 .action-badge {
   position: absolute;
   top: 2px;
-  right: 8px;
-  background: #ef4444;
-  color: white;
-  font-size: 10px;
-  width: 18px;
-  height: 18px;
+  right: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 9px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
 }
 
 /* ===== MODAL NOUVEAU SIGNALEMENT ===== */
 .new-signalement-container {
   padding: 20px;
-  background: #f5f6f8;
+  background: #f1f5f9;
   min-height: 100%;
 }
 
@@ -1407,15 +1461,27 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: white;
-  padding: 18px;
-  border-radius: 16px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .location-icon {
-  font-size: 32px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.location-icon ion-icon {
+  font-size: 22px;
+  color: #1a56db;
 }
 
 .location-text {
@@ -1428,185 +1494,187 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 10px 14px;
-  background: linear-gradient(135deg, #3880ff, #5260ff);
-  color: white;
+  background: #1a56db;
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
-  min-width: 80px;
+  transition: all 0.15s;
+  min-width: 76px;
 }
 
 .use-location-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(56, 128, 255, 0.4);
+  background: #164bc1;
 }
 
 .use-location-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: wait;
 }
 
 .use-location-btn ion-icon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .use-location-btn ion-spinner {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .use-location-btn span {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .location-title {
   display: block;
   font-weight: 600;
-  font-size: 15px;
-  color: #333;
+  font-size: 14px;
+  color: #0f172a;
 }
 
 .location-coords {
   display: block;
-  font-size: 13px;
-  color: #888;
-  margin-top: 3px;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  font-family: 'Courier New', monospace;
 }
 
 .form-section-title {
   font-weight: 600;
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 14px;
-  padding-left: 4px;
+  font-size: 14px;
+  color: #0f172a;
+  margin-bottom: 12px;
+  padding-left: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .problems-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .problem-item {
-  background: white;
-  border: 3px solid transparent;
-  border-radius: 16px;
-  padding: 18px 12px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 10px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.15s;
 }
 
-.problem-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+.problem-item:active {
+  transform: scale(0.97);
 }
 
 .problem-item.selected {
-  border-color: #ef4444;
-  background: #fef2f2;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+  border-color: #1a56db;
+  background: #eff6ff;
 }
 
 .problem-icon {
   display: block;
-  font-size: 36px;
-  margin-bottom: 10px;
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #1a56db;
 }
 
 .problem-name {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  color: #0f172a;
+  margin-bottom: 6px;
 }
 
 .problem-badge {
   display: inline-block;
   font-size: 10px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-weight: 600;
 }
 
 .priority-1 {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #dc2626;
 }
 
 .priority-2 {
-  background: #fef3c7;
+  background: #fffbeb;
   color: #d97706;
 }
 
 .priority-3 {
-  background: #e5e7eb;
-  color: #6b7280;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .description-field {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .description-field textarea {
   width: 100%;
-  padding: 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 14px;
-  font-size: 15px;
+  padding: 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
   resize: none;
   font-family: inherit;
-  background: white;
+  background: #ffffff;
   transition: border-color 0.2s;
+  box-sizing: border-box;
+  outline: none;
 }
 
 .description-field textarea:focus {
-  outline: none;
-  border-color: #3880ff;
+  border-color: #1a56db;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.08);
 }
 
 .send-button {
   width: 100%;
-  padding: 18px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
+  padding: 16px;
+  background: #1a56db;
+  color: #ffffff;
   border: none;
-  border-radius: 14px;
-  font-size: 17px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  transition: all 0.15s;
 }
 
-.send-button:active {
+.send-button:active:not(.disabled) {
   transform: scale(0.98);
+  background: #164bc1;
 }
 
 .send-button.disabled {
-  background: #d1d5db;
-  box-shadow: none;
+  background: #94a3b8;
   cursor: not-allowed;
 }
 
 /* ===== SECTION PHOTOS ===== */
 .photos-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .photo-buttons {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .photo-btn {
@@ -1614,49 +1682,49 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: white;
-  border: 2px dashed #d1d5db;
-  border-radius: 14px;
+  gap: 6px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .photo-btn:hover:not(:disabled) {
-  border-color: #3880ff;
-  background: #f0f7ff;
+  border-color: #1a56db;
+  background: #eff6ff;
 }
 
 .photo-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .photo-btn ion-icon {
-  font-size: 28px;
-  color: #3880ff;
+  font-size: 24px;
+  color: #1a56db;
 }
 
 .photo-btn span {
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
 }
 
 .photos-preview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .photo-item {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .photo-item img {
@@ -1669,118 +1737,127 @@ onUnmounted(() => {
   position: absolute;
   top: 4px;
   right: 4px;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: 50%;
-  background: rgba(0,0,0,0.6);
-  color: white;
+  background: rgba(15, 23, 42, 0.6);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.remove-photo-btn:hover {
-  background: #ef4444;
+.remove-photo-btn:active {
+  background: #dc2626;
 }
 
 .remove-photo-btn ion-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .photos-count {
   text-align: center;
-  font-size: 13px;
-  color: #6b7280;
+  font-size: 12px;
+  color: #64748b;
   font-weight: 500;
 }
 
 /* ===== MODAL RÉCAPITULATIF ===== */
 .stats-container {
   padding: 20px;
-  background: #f5f6f8;
+  background: #f1f5f9;
   min-height: 100%;
 }
 
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 16px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-left: 4px solid transparent;
 }
 
 .card-blue {
-  border-top: 4px solid #3880ff;
+  border-left-color: #1a56db;
 }
 
 .card-green {
-  border-top: 4px solid #22c55e;
+  border-left-color: #059669;
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.stat-icon {
+  font-size: 14px;
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 14px;
+  color: #0f172a;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .status-section, .type-section, .enterprise-section {
-  background: white;
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 .status-bar {
   display: flex;
-  height: 32px;
-  border-radius: 16px;
+  height: 28px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #e5e7eb;
-  margin-bottom: 14px;
+  background: #e2e8f0;
+  margin-bottom: 12px;
 }
 
 .status-segment {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 600;
   transition: width 0.3s;
 }
 
-.status-new { background: #ef4444; }
-.status-progress { background: #f59e0b; }
-.status-done { background: #22c55e; }
+.status-new { background: #dc2626; }
+.status-progress { background: #d97706; }
+.status-done { background: #059669; }
 
 .status-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 14px;
 }
 
 .legend-item {
@@ -1788,30 +1865,30 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
-.dot-new { background: #ef4444; }
-.dot-progress { background: #f59e0b; }
-.dot-done { background: #22c55e; }
+.dot-new { background: #dc2626; }
+.dot-progress { background: #d97706; }
+.dot-done { background: #059669; }
 
 .type-list, .enterprise-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
 .type-row, .enterprise-row {
   display: flex;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .type-row:last-child, .enterprise-row:last-child {
@@ -1819,22 +1896,27 @@ onUnmounted(() => {
 }
 
 .type-icon {
-  font-size: 24px;
-  margin-right: 12px;
+  font-size: 20px;
+  margin-right: 10px;
+  width: 28px;
+  text-align: center;
+  color: #1a56db;
 }
 
 .type-name, .enterprise-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  color: #0f172a;
 }
 
-.type-count, .enterprise-count {
-  background: #e5e7eb;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
+.type-count {
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 600;
+  color: #475569;
 }
 
 .enterprise-info {
@@ -1843,124 +1925,136 @@ onUnmounted(() => {
 
 .enterprise-spec {
   display: block;
-  font-size: 12px;
-  color: #888;
-  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 1px;
 }
 
 .enterprise-count {
-  background: #3880ff;
-  color: white;
+  background: #1a56db;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ===== MODAL FILTRES ===== */
 .filter-container {
   padding: 20px;
-  background: #f5f6f8;
+  background: #f1f5f9;
   min-height: 100%;
 }
 
 .filter-group {
-  background: white;
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 .filter-group-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 14px;
+  color: #0f172a;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
-.filter-btn {
-  padding: 10px 18px;
-  background: #e5e7eb;
-  border: 2px solid transparent;
-  border-radius: 25px;
-  font-size: 14px;
+.filter-chips .filter-btn {
+  padding: 8px 16px;
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  color: #475569;
+  font-weight: 500;
+  flex-direction: row;
 }
 
-.filter-btn.active {
-  background: #3880ff;
-  color: white;
+.filter-chips .filter-btn.active {
+  background: #1a56db;
+  color: #ffffff;
+  border-color: #1a56db;
 }
 
-.filter-btn.btn-red.active { background: #ef4444; }
-.filter-btn.btn-orange.active { background: #f59e0b; }
-.filter-btn.btn-green.active { background: #22c55e; }
+.filter-chips .filter-btn.btn-red.active { background: #dc2626; border-color: #dc2626; }
+.filter-chips .filter-btn.btn-orange.active { background: #d97706; border-color: #d97706; }
+.filter-chips .filter-btn.btn-green.active { background: #059669; border-color: #059669; }
 
 .filter-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.action-btn {
+.filter-actions .action-btn {
   flex: 1;
-  padding: 16px;
+  padding: 14px;
   border: none;
-  border-radius: 14px;
-  font-size: 15px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  flex-direction: row;
 }
 
 .btn-reset {
-  background: #e5e7eb;
-  color: #374151;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .btn-apply {
-  background: #3880ff;
-  color: white;
+  background: #1a56db;
+  color: #ffffff;
 }
 
 /* ===== MODAL DÉTAIL ===== */
 .detail-container {
   padding: 0;
-  background: #f5f6f8;
+  background: #f1f5f9;
   min-height: 100%;
 }
 
 .detail-status {
-  padding: 16px;
+  padding: 14px;
   text-align: center;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .detail-status.status-nouveau { background: #fef2f2; color: #dc2626; }
 .detail-status.status-en_cours { background: #fffbeb; color: #d97706; }
-.detail-status.status-termine { background: #f0fdf4; color: #16a34a; }
+.detail-status.status-termine { background: #ecfdf5; color: #059669; }
 
 .detail-info {
-  background: white;
+  background: #ffffff;
   margin: 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .info-row {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .info-row:last-child {
@@ -1968,41 +2062,56 @@ onUnmounted(() => {
 }
 
 .info-icon {
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.info-icon ion-icon {
+  font-size: 18px;
+  color: #475569;
 }
 
 .info-label {
   display: block;
-  font-size: 12px;
-  color: #888;
+  font-size: 11px;
+  color: #94a3b8;
   margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
 }
 
 .info-value {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: #0f172a;
 }
 
 .delete-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   width: calc(100% - 32px);
   margin: 16px;
-  padding: 16px;
-  background: #fef2f2;
+  padding: 14px;
+  background: #ffffff;
   color: #dc2626;
-  border: 2px solid #fecaca;
-  border-radius: 14px;
-  font-size: 15px;
+  border: 1.5px solid #fecaca;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .delete-btn:active {
-  background: #fee2e2;
+  background: #fef2f2;
 }
 
 /* ===== PHOTOS DANS DETAIL ===== */
@@ -2015,20 +2124,20 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .detail-photo-item {
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s;
 }
 
-.detail-photo-item:hover {
-  transform: scale(1.05);
+.detail-photo-item:active {
+  transform: scale(0.95);
 }
 
 .detail-photo-item img {
