@@ -123,6 +123,7 @@ CREATE TABLE signalement_firebase (
     probleme_nom VARCHAR(200),
     description TEXT,
     photo_url TEXT,
+    photos TEXT,  -- JSON array de photos en base64
     
     -- Données financières
     surface NUMERIC(10,2),
@@ -164,6 +165,41 @@ CREATE INDEX idx_signalement_firebase_status ON signalement_firebase(status);
 CREATE INDEX idx_signalement_firebase_statut_local ON signalement_firebase(statut_local);
 CREATE INDEX idx_signalement_firebase_avancement ON signalement_firebase(avancement_pourcentage);
 CREATE INDEX idx_signalement_firebase_geom ON signalement_firebase USING GIST (geom);
+
+-- ============================================================================
+-- SECTION 4B: HISTORIQUE D'AVANCEMENT (pour statistiques traitement)
+-- ============================================================================
+
+-- Table pour tracer l'historique des changements de statut
+CREATE TABLE historique_avancement (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- Référence au signalement (local ou Firebase)
+    signalement_id BIGINT,                                 -- ID signalement_details (local)
+    firebase_signalement_id BIGINT,                        -- ID signalement_firebase
+    
+    -- Informations du changement
+    ancien_statut VARCHAR(50),                             -- Statut avant changement
+    nouveau_statut VARCHAR(50),                            -- Nouveau statut
+    ancien_avancement INTEGER,                             -- Avancement avant (0, 50, 100)
+    nouveau_avancement INTEGER,                            -- Nouvel avancement (0, 50, 100)
+    
+    -- Métadonnées
+    date_changement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   -- Date du changement
+    utilisateur_id VARCHAR(255),                           -- Qui a fait le changement (email)
+    commentaire TEXT,                                      -- Notes optionnelles
+    
+    -- Contrainte: au moins un des deux IDs doit être renseigné
+    CONSTRAINT chk_signalement_ref CHECK (
+        signalement_id IS NOT NULL OR firebase_signalement_id IS NOT NULL
+    )
+);
+
+-- Index pour l'historique
+CREATE INDEX idx_historique_signalement_id ON historique_avancement(signalement_id);
+CREATE INDEX idx_historique_firebase_id ON historique_avancement(firebase_signalement_id);
+CREATE INDEX idx_historique_date ON historique_avancement(date_changement);
+CREATE INDEX idx_historique_nouveau_statut ON historique_avancement(nouveau_statut);
 
 -- ============================================================================
 -- SECTION 5: TABLES D'AUTHENTIFICATION
@@ -221,12 +257,6 @@ CREATE TABLE security_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE signalement_firebase ADD COLUMN IF NOT EXISTS photos TEXT;
-ALTER TABLE signalement_firebase ADD COLUMN IF NOT EXISTS needs_firebase_sync BOOLEAN DEFAULT FALSE;
-
--- Index pour retrouver rapidement les signalements modifiés à synchroniser
-CREATE INDEX IF NOT EXISTS idx_signalement_firebase_needs_sync ON signalement_firebase(needs_firebase_sync) WHERE needs_firebase_sync = TRUE;
-
 -- ============================================================================
 -- SECTION 6: DONNÉES DE TEST / RÉFÉRENCE
 -- ============================================================================
@@ -263,15 +293,10 @@ VALUES (30, 5, 15, TRUE);
 -- IMPORTANT: password_hash = BCrypt de "password123" et password_plain_temp pour la sync Firebase
 INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase, password_hash, password_plain_temp) 
 VALUES 
-    ('local-5fa20835-e5ab-44d0-a758-6c3d9af954ab', 'manager@routefr.com', 'Manager Routefr', 'MANAGER', FALSE, 
-     '$2a$10$hJSneLLD//Q4M8zExxj5h.f3KJrbV2AIJaDM6VbtRzFLt0bkVqdiO', '123456'),
+    ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE, 
+     '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123'),
     ('user-001', 'user@routefr.com', 'User Test', 'USER', FALSE,
      '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123');
-
-
-
-
-    --  DELETE FROM local_users WHERE email = 'manager@routefr.com';
 
 -- ============================================================================
 -- SECTION 7: SIGNALEMENTS DE TEST

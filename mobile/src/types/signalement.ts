@@ -53,14 +53,14 @@ export interface SignalementStats {
 
 // Données initiales à insérer dans Firebase
 export const TYPES_PROBLEMES_INITIAUX: TypeProbleme[] = [
-  { id: 'route', nom: 'Route défectueuse', icone: '🛣️', description: 'Nid de poule, fissure, affaissement', priorite: 1, actif: true },
-  { id: 'eau', nom: 'Problème d\'eau', icone: '💧', description: 'Fuite, inondation, canalisation', priorite: 1, actif: true },
-  { id: 'chantier', nom: 'Chantier dangereux', icone: '🚧', description: 'Chantier mal sécurisé', priorite: 1, actif: true },
-  { id: 'eclairage', nom: 'Éclairage public', icone: '💡', description: 'Lampadaire en panne', priorite: 2, actif: true },
-  { id: 'trottoir', nom: 'Trottoir abîmé', icone: '🚶', description: 'Trottoir cassé ou dangereux', priorite: 2, actif: true },
-  { id: 'dechet', nom: 'Déchets/Débris', icone: '🗑️', description: 'Déchets ou débris sur la voie', priorite: 2, actif: true },
-  { id: 'signalisation', nom: 'Signalisation', icone: '🚦', description: 'Panneau ou feu défaillant', priorite: 2, actif: true },
-  { id: 'autre', nom: 'Autre', icone: '📌', description: 'Autre problème', priorite: 3, actif: true },
+  { id: 'route', nom: 'Route défectueuse', icone: 'construct-outline', description: 'Nid de poule, fissure, affaissement', priorite: 1, actif: true },
+  { id: 'eau', nom: 'Problème d\'eau', icone: 'water-outline', description: 'Fuite, inondation, canalisation', priorite: 1, actif: true },
+  { id: 'chantier', nom: 'Chantier dangereux', icone: 'warning-outline', description: 'Chantier mal sécurisé', priorite: 1, actif: true },
+  { id: 'eclairage', nom: 'Éclairage public', icone: 'flash-outline', description: 'Lampadaire en panne', priorite: 2, actif: true },
+  { id: 'trottoir', nom: 'Trottoir abîmé', icone: 'walk-outline', description: 'Trottoir cassé ou dangereux', priorite: 2, actif: true },
+  { id: 'dechet', nom: 'Déchets/Débris', icone: 'trash-bin-outline', description: 'Déchets ou débris sur la voie', priorite: 2, actif: true },
+  { id: 'signalisation', nom: 'Signalisation', icone: 'flag-outline', description: 'Panneau ou feu défaillant', priorite: 2, actif: true },
+  { id: 'autre', nom: 'Autre', icone: 'pin-outline', description: 'Autre problème', priorite: 3, actif: true },
 ];
 
 export const ENTREPRISES_INITIALES: Entreprise[] = [
@@ -76,18 +76,18 @@ export const ENTREPRISES_INITIALES: Entreprise[] = [
 export const STATUS_CONFIG = {
   nouveau: {
     label: 'Nouveau',
-    color: '#ff4444',
-    icon: '🔴'
+    color: '#dc2626',
+    icon: 'alert-circle-outline'
   },
   en_cours: {
     label: 'En cours',
-    color: '#ffaa00',
-    icon: '🟡'
+    color: '#d97706',
+    icon: 'time-outline'
   },
   termine: {
     label: 'Terminé',
-    color: '#00aa00',
-    icon: '🟢'
+    color: '#059669',
+    icon: 'checkmark-circle-outline'
   }
 };
 
