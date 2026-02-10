@@ -1,6 +1,9 @@
 // frontend/src/components/SignalementDetailModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './SignalementDetailModal.css';
+
+const API_BASE_URL = 'http://localhost:8086';
 
 // Formatage des nombres pour l'affichage
 const formatNumber = (num) => {
@@ -21,6 +24,19 @@ const formatDate = (dateString) => {
   });
 };
 
+// Formatage des dates pour l'historique (plus compact)
+const formatDateShort = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
 // Mapping des statuts
 const STATUTS = [
   { id: 10, code: 'EN_ATTENTE', libelle: 'En attente', color: '#f39c12', icon: '🟡' },
@@ -28,6 +44,27 @@ const STATUTS = [
   { id: 30, code: 'TRAITE', libelle: 'Traité', color: '#27ae60', icon: '🟢' },
   { id: 40, code: 'REJETE', libelle: 'Rejeté', color: '#e74c3c', icon: '🔴' }
 ];
+
+// Obtenir le libellé et l'icône d'un statut
+const getStatutInfo = (statut) => {
+  if (!statut) return { libelle: 'Inconnu', icon: '⚪', color: '#999' };
+  
+  // Mapper les statuts Firebase vers les libellés
+  const statutLower = statut.toString().toLowerCase();
+  if (statutLower === 'nouveau' || statutLower === '10' || statutLower === 'en_attente') {
+    return { libelle: 'En attente', icon: '🟡', color: '#f39c12' };
+  }
+  if (statutLower === 'en_cours' || statutLower === '20') {
+    return { libelle: 'En cours', icon: '🔵', color: '#3498db' };
+  }
+  if (statutLower === 'traite' || statutLower === 'termine' || statutLower === '30') {
+    return { libelle: 'Traité', icon: '🟢', color: '#27ae60' };
+  }
+  if (statutLower === 'rejete' || statutLower === '40') {
+    return { libelle: 'Rejeté', icon: '🔴', color: '#e74c3c' };
+  }
+  return { libelle: statut, icon: '⚪', color: '#999' };
+};
 
 const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose }) => {
   const [formData, setFormData] = useState({
@@ -39,6 +76,28 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [historique, setHistorique] = useState([]);
+  const [loadingHistorique, setLoadingHistorique] = useState(false);
+
+  // Charger l'historique d'avancement
+  useEffect(() => {
+    const loadHistorique = async () => {
+      setLoadingHistorique(true);
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/manager/signalements/${signalement.id}/historique`);
+        setHistorique(response.data || []);
+      } catch (err) {
+        console.error('Erreur chargement historique:', err);
+        setHistorique([]);
+      } finally {
+        setLoadingHistorique(false);
+      }
+    };
+    
+    if (signalement.id) {
+      loadHistorique();
+    }
+  }, [signalement.id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -237,6 +296,71 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                 ))}
               </div>
             </div>
+            
+            {/* Dates d'avancement */}
+            {(signalement.dateDebutTravaux || signalement.dateFinTravaux) && (
+              <div className="avancement-dates">
+                <h4>📅 Dates d'avancement</h4>
+                <div className="dates-grid">
+                  {signalement.dateDebutTravaux && (
+                    <div className="date-item">
+                      <span className="date-label">🔵 Début des travaux</span>
+                      <span className="date-value">{formatDate(signalement.dateDebutTravaux)}</span>
+                    </div>
+                  )}
+                  {signalement.dateFinTravaux && (
+                    <div className="date-item">
+                      <span className="date-label">🟢 Fin des travaux</span>
+                      <span className="date-value">{formatDate(signalement.dateFinTravaux)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Historique d'avancement */}
+          <div className="historique-section">
+            <h3>📜 Historique d'avancement</h3>
+            {loadingHistorique ? (
+              <p className="loading-text">Chargement de l'historique...</p>
+            ) : historique.length === 0 ? (
+              <p className="no-historique">Aucun changement de statut enregistré</p>
+            ) : (
+              <div className="historique-timeline">
+                {historique.map((h, index) => {
+                  const ancienInfo = getStatutInfo(h.ancienStatut);
+                  const nouveauInfo = getStatutInfo(h.nouveauStatut);
+                  return (
+                    <div key={h.id || index} className="historique-item">
+                      <div className="historique-date">
+                        {formatDateShort(h.dateChangement)}
+                      </div>
+                      <div className="historique-change">
+                        <span 
+                          className="statut-badge ancien"
+                          style={{ backgroundColor: `${ancienInfo.color}30`, color: ancienInfo.color }}
+                        >
+                          {ancienInfo.icon} {ancienInfo.libelle}
+                        </span>
+                        <span className="arrow">→</span>
+                        <span 
+                          className="statut-badge nouveau"
+                          style={{ backgroundColor: `${nouveauInfo.color}30`, color: nouveauInfo.color }}
+                        >
+                          {nouveauInfo.icon} {nouveauInfo.libelle}
+                        </span>
+                      </div>
+                      {h.commentaire && (
+                        <div className="historique-commentaire">
+                          💬 {h.commentaire}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Message d'erreur */}

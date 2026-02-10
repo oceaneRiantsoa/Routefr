@@ -162,6 +162,41 @@ CREATE INDEX idx_signalement_firebase_avancement ON signalement_firebase(avancem
 CREATE INDEX idx_signalement_firebase_geom ON signalement_firebase USING GIST (geom);
 
 -- ============================================================================
+-- SECTION 4B: HISTORIQUE D'AVANCEMENT (pour statistiques traitement)
+-- ============================================================================
+
+-- Table pour tracer l'historique des changements de statut
+CREATE TABLE historique_avancement (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- Référence au signalement (local ou Firebase)
+    signalement_id BIGINT,                                 -- ID signalement_details (local)
+    firebase_signalement_id BIGINT,                        -- ID signalement_firebase
+    
+    -- Informations du changement
+    ancien_statut VARCHAR(50),                             -- Statut avant changement
+    nouveau_statut VARCHAR(50),                            -- Nouveau statut
+    ancien_avancement INTEGER,                             -- Avancement avant (0, 50, 100)
+    nouveau_avancement INTEGER,                            -- Nouvel avancement (0, 50, 100)
+    
+    -- Métadonnées
+    date_changement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   -- Date du changement
+    utilisateur_id VARCHAR(255),                           -- Qui a fait le changement (email)
+    commentaire TEXT,                                      -- Notes optionnelles
+    
+    -- Contrainte: au moins un des deux IDs doit être renseigné
+    CONSTRAINT chk_signalement_ref CHECK (
+        signalement_id IS NOT NULL OR firebase_signalement_id IS NOT NULL
+    )
+);
+
+-- Index pour l'historique
+CREATE INDEX idx_historique_signalement_id ON historique_avancement(signalement_id);
+CREATE INDEX idx_historique_firebase_id ON historique_avancement(firebase_signalement_id);
+CREATE INDEX idx_historique_date ON historique_avancement(date_changement);
+CREATE INDEX idx_historique_nouveau_statut ON historique_avancement(nouveau_statut);
+
+-- ============================================================================
 -- SECTION 5: TABLES D'AUTHENTIFICATION
 -- ============================================================================
 

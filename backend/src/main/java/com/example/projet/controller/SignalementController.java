@@ -179,4 +179,31 @@ public class SignalementController {
         );
         return ResponseEntity.ok(avancements);
     }
+    
+    /**
+     * Récupère l'historique d'avancement d'un signalement
+     */
+    @GetMapping("/{id}/historique")
+    @Operation(summary = "Historique d'avancement", description = "Récupère l'historique des changements de statut d'un signalement")
+    public ResponseEntity<?> getHistorique(@PathVariable Long id) {
+        log.info("GET /api/manager/signalements/{}/historique - Récupération de l'historique", id);
+        try {
+            var historique = signalementService.getHistoriqueAvancement(id);
+            return ResponseEntity.ok(historique);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération de l'historique: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * Récupère les statistiques de temps de traitement moyen
+     */
+    @GetMapping("/statistiques/traitement")
+    @Operation(summary = "Statistiques de traitement", description = "Temps moyen de prise en charge et de traitement des signalements")
+    public ResponseEntity<Map<String, Object>> getStatistiquesTraitement() {
+        log.info("GET /api/manager/signalements/statistiques/traitement - Statistiques de traitement");
+        Map<String, Object> stats = signalementService.getStatistiquesTraitement();
+        return ResponseEntity.ok(stats);
+    }
 }
