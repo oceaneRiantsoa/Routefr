@@ -25,11 +25,21 @@ public class StatistiquesService {
     private final SignalementFirebaseRepository firebaseRepository;
 
     /**
+     * Vérifie si un signalement a une position valide
+     */
+    private boolean hasValidPosition(SignalementFirebase entity) {
+        return entity.getLatitude() != null && entity.getLongitude() != null;
+    }
+
+    /**
      * Calcule les statistiques complètes avec délais de traitement
+     * Ne prend en compte que les signalements avec position valide
      */
     public StatistiquesDTO getStatistiquesCompletes() {
-        List<SignalementFirebase> signalements = firebaseRepository.findAll();
-        
+        List<SignalementFirebase> signalements = firebaseRepository.findAll().stream()
+                .filter(this::hasValidPosition)
+                .collect(Collectors.toList());
+
         if (signalements.isEmpty()) {
             return StatistiquesDTO.builder()
                     .nombreTotal(0L)
@@ -49,7 +59,7 @@ public class StatistiquesService {
         }
 
         long total = signalements.size();
-        
+
         // Compter par statut/avancement
         long nouveau = signalements.stream()
                 .filter(s -> getAvancement(s) == 0)
@@ -68,7 +78,7 @@ public class StatistiquesService {
         double delaiMoyenTraitement = calculerDelaiMoyenTraitement(signalements);
         double delaiMoyenDebutTravaux = calculerDelaiMoyenDebutTravaux(signalements);
         double delaiMoyenFinTravaux = calculerDelaiMoyenFinTravaux(signalements);
-        
+
         // Délais par type de problème
         Map<String, Double> delaiParType = calculerDelaisParType(signalements);
 
@@ -96,22 +106,23 @@ public class StatistiquesService {
     }
 
     /**
-     * Détermine l'avancement d'un signalement
+     * Détermine l'avancement d'un signalement basé sur le champ status (pas
+     * metadata)
      */
     private int getAvancement(SignalementFirebase s) {
-        if (s.getAvancementPourcentage() != null) {
-            return s.getAvancementPourcentage();
-        }
-        // Déduire de l'ancien statut si pas encore migré
+        // Se baser uniquement sur le champ status, pas sur avancementPourcentage
+        // (metadata)
         String status = s.getStatus() != null ? s.getStatus().toLowerCase() : "";
-        String statutLocal = s.getStatutLocal() != null ? s.getStatutLocal().toLowerCase() : "";
-        
-        if (status.contains("termin") || statutLocal.contains("termin") || status.equals("traite")) {
+
+        if ("termine".equals(status) || "terminé".equals(status) || "terminate".equals(status)
+                || "traite".equals(status)) {
             return 100;
-        } else if (status.contains("cours") || statutLocal.contains("cours")) {
+        } else if ("en_cours".equals(status) || "en cours".equals(status)) {
             return 50;
+        } else if ("rejete".equals(status) || "rejeté".equals(status)) {
+            return 0; // rejetés comptés séparément
         }
-        return 0;
+        return 0; // nouveau par défaut
     }
 
     /**
@@ -122,8 +133,9 @@ public class StatistiquesService {
                 .filter(s -> s.getDateFinTravaux() != null && s.getDateCreationFirebase() != null)
                 .map(s -> ChronoUnit.DAYS.between(s.getDateCreationFirebase(), s.getDateFinTravaux()))
                 .collect(Collectors.toList());
-        
-        if (delais.isEmpty()) return 0.0;
+
+        if (delais.isEmpty())
+            return 0.0;
         return delais.stream().mapToLong(Long::longValue).average().orElse(0.0);
     }
 
@@ -135,8 +147,9 @@ public class StatistiquesService {
                 .filter(s -> s.getDateDebutTravaux() != null && s.getDateCreationFirebase() != null)
                 .map(s -> ChronoUnit.DAYS.between(s.getDateCreationFirebase(), s.getDateDebutTravaux()))
                 .collect(Collectors.toList());
-        
-        if (delais.isEmpty()) return 0.0;
+
+        if (delais.isEmpty())
+            return 0.0;
         return delais.stream().mapToLong(Long::longValue).average().orElse(0.0);
     }
 
@@ -148,8 +161,9 @@ public class StatistiquesService {
                 .filter(s -> s.getDateFinTravaux() != null && s.getDateDebutTravaux() != null)
                 .map(s -> ChronoUnit.DAYS.between(s.getDateDebutTravaux(), s.getDateFinTravaux()))
                 .collect(Collectors.toList());
-        
-        if (delais.isEmpty()) return 0.0;
+
+        if (delais.isEmpty())
+            return 0.0;
         return delais.stream().mapToLong(Long::longValue).average().orElse(0.0);
     }
 
@@ -158,7 +172,7 @@ public class StatistiquesService {
      */
     private Map<String, Double> calculerDelaisParType(List<SignalementFirebase> signalements) {
         Map<String, List<Long>> delaisParType = new HashMap<>();
-        
+
         for (SignalementFirebase s : signalements) {
             if (s.getDateFinTravaux() != null && s.getDateCreationFirebase() != null && s.getProblemeNom() != null) {
                 String type = s.getProblemeNom();
@@ -166,13 +180,13 @@ public class StatistiquesService {
                 delaisParType.computeIfAbsent(type, k -> new ArrayList<>()).add(delai);
             }
         }
-        
+
         Map<String, Double> moyennes = new LinkedHashMap<>();
         delaisParType.forEach((type, delais) -> {
             double moyenne = delais.stream().mapToLong(Long::longValue).average().orElse(0.0);
             moyennes.put(type, Math.round(moyenne * 10.0) / 10.0);
         });
-        
+
         // Trier par délai décroissant
         return moyennes.entrySet().stream()
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
@@ -180,8 +194,7 @@ public class StatistiquesService {
                         Map.Entry::getKey,
                         Map.Entry::getValue,
                         (e1, e2) -> e1,
-                        LinkedHashMap::new
-                ));
+                        LinkedHashMap::new));
     }
 
     /**
@@ -239,18 +252,20 @@ public class StatistiquesService {
 
         signalement.setAvancementPourcentage(pourcentage);
         signalement.setDateModificationLocal(now);
-        
+
         // Marquer pour synchronisation vers Firebase
         signalement.setNeedsFirebaseSync(true);
-        
+
         // Ajouter les notes si fournies
         if (avancementDTO.getNotes() != null && !avancementDTO.getNotes().isEmpty()) {
             String existingNotes = signalement.getNotesManager() != null ? signalement.getNotesManager() : "";
-            String newNote = String.format("[%s] %s: %s", now.toLocalDate(), statut.toUpperCase(), avancementDTO.getNotes());
+            String newNote = String.format("[%s] %s: %s", now.toLocalDate(), statut.toUpperCase(),
+                    avancementDTO.getNotes());
             signalement.setNotesManager(existingNotes.isEmpty() ? newNote : existingNotes + "\n" + newNote);
         }
 
-        log.info("Mise à jour avancement signalement {}: {}% ({}) - Code statut: {}", id, pourcentage, statut, codeStatut);
+        log.info("Mise à jour avancement signalement {}: {}% ({}) - Code statut: {}", id, pourcentage, statut,
+                codeStatut);
         return firebaseRepository.save(signalement);
     }
 
@@ -258,10 +273,14 @@ public class StatistiquesService {
      * Map pourcentage vers code de statut
      */
     private Integer mapPourcentageToStatut(int pourcentage) {
-        if (pourcentage == 0) return 10;        // EN_ATTENTE
-        else if (pourcentage == 50) return 20;  // EN_COURS
-        else if (pourcentage == 100) return 30; // TERMINE/TRAITE
-        else return 10; // Par défaut EN_ATTENTE
+        if (pourcentage == 0)
+            return 10; // EN_ATTENTE
+        else if (pourcentage == 50)
+            return 20; // EN_COURS
+        else if (pourcentage == 100)
+            return 30; // TERMINE/TRAITE
+        else
+            return 10; // Par défaut EN_ATTENTE
     }
 
     /**

@@ -27,25 +27,35 @@ public class SignalementService {
 
     /**
      * Récupère tous les signalements (uniquement depuis signalement_firebase)
+     * Filtre les signalements sans position (lat/lng)
      */
     public List<SignalementDTO> getAllSignalements() {
         List<SignalementFirebase> signalements = firebaseRepository.findAllByOrderByDateCreationFirebaseDesc();
         List<SignalementDTO> dtos = signalements.stream()
+                .filter(this::hasValidPosition)
                 .map(this::mapFirebaseToDTO)
                 .collect(Collectors.toList());
-        log.info("📋 Total signalements: {}", dtos.size());
+        log.info("📋 Total signalements (avec position): {}", dtos.size());
         return dtos;
     }
 
     /**
+     * Vérifie si un signalement a une position valide
+     */
+    private boolean hasValidPosition(SignalementFirebase entity) {
+        return entity.getLatitude() != null && entity.getLongitude() != null;
+    }
+
+    /**
      * Récupère les signalements filtrés par statut
+     * Filtre les signalements sans position (lat/lng)
+     * Utilise le champ status (pas avancementPourcentage/metadata)
      */
     public List<SignalementDTO> getSignalementsByStatut(Integer idStatut) {
-        // Convertir le code statut en avancement
-        Integer avancement = mapStatutToAvancement(idStatut);
-        List<SignalementFirebase> signalements = firebaseRepository
-                .findByAvancementPourcentageOrderByDateCreationFirebaseDesc(avancement);
+        List<SignalementFirebase> signalements = firebaseRepository.findAllByOrderByDateCreationFirebaseDesc();
         return signalements.stream()
+                .filter(this::hasValidPosition)
+                .filter(s -> mapAvancementToStatutId(s).equals(idStatut))
                 .map(this::mapFirebaseToDTO)
                 .collect(Collectors.toList());
     }
@@ -116,6 +126,8 @@ public class SignalementService {
 
     /**
      * Récupère les statistiques par statut
+     * Basé sur le champ status (pas avancementPourcentage/metadata)
+     * Ne compte que les signalements avec position valide
      */
     public Map<String, Long> getStatistiquesByStatut() {
         Map<String, Long> stats = new LinkedHashMap<>();
@@ -124,24 +136,29 @@ public class SignalementService {
         stats.put("TRAITE", 0L);
         stats.put("REJETE", 0L);
 
-        List<Object[]> results = firebaseRepository.countByAvancementGrouped();
-        for (Object[] row : results) {
-            Integer avancement = row[0] != null ? ((Number) row[0]).intValue() : 0;
-            Long count = ((Number) row[1]).longValue();
-            String code = mapAvancementToStatutCode(avancement);
-            stats.put(code, stats.getOrDefault(code, 0L) + count);
-        }
-
-        // Compter les rejetés séparément
+        // Compter tous les signalements avec position valide, groupés par status
         List<SignalementFirebase> all = firebaseRepository.findAll();
-        long rejetes = all.stream()
-                .filter(s -> "rejete".equalsIgnoreCase(s.getStatus()) || "rejeté".equalsIgnoreCase(s.getStatus()))
-                .count();
-        if (rejetes > 0) {
-            stats.put("REJETE", rejetes);
-            // Soustraire des EN_ATTENTE car avancement=0 pour les rejetés aussi
-            stats.put("EN_ATTENTE", Math.max(0, stats.get("EN_ATTENTE") - rejetes));
-        }
+        all.stream()
+                .filter(this::hasValidPosition)
+                .forEach(s -> {
+                    Integer idStatut = mapAvancementToStatutId(s);
+                    String code;
+                    switch (idStatut) {
+                        case 20:
+                            code = "EN_COURS";
+                            break;
+                        case 30:
+                            code = "TRAITE";
+                            break;
+                        case 40:
+                            code = "REJETE";
+                            break;
+                        default:
+                            code = "EN_ATTENTE";
+                            break;
+                    }
+                    stats.put(code, stats.get(code) + 1);
+                });
 
         return stats;
     }
