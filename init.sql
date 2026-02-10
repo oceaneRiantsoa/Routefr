@@ -1,7 +1,16 @@
 -- ============================================================================
--- INIT_CLEAN.SQL - Script d'initialisation de la base de données Route Signalement
--- Version: 2.0 - Février 2026
--- Inclut: Tables d'avancement, authentification, et gestion des signalements
+-- INIT.SQL - Script d'initialisation COMPLET de la base de données Route Signalement
+-- Version: 3.0 FINALE - 10 Février 2026
+-- ============================================================================
+-- Ce fichier est la référence unique pour recréer la base après un
+-- docker compose down / docker compose up.
+-- Il inclut TOUTES les modifications faites pendant le développement :
+--   - Colonnes d'avancement (avancement_pourcentage, dates travaux)
+--   - Colonne needs_firebase_sync pour la synchronisation Firebase
+--   - Colonne entreprise_assignee dans signalement_details
+--   - Table historique_avancement pour tracer les changements de statut
+--   - Colonnes auth Firebase (firebase_sync_date, password_plain_temp, synced_to_firebase)
+--   - FK user_sessions ON UPDATE CASCADE (pour sync firebase_uid)
 -- ============================================================================
 
 -- Active l'extension PostGIS
@@ -12,6 +21,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- ============================================================================
 
 DROP VIEW IF EXISTS vue_recapitulation;
+DROP TABLE IF EXISTS historique_avancement CASCADE;
 DROP TABLE IF EXISTS user_sessions CASCADE;
 DROP TABLE IF EXISTS local_users CASCADE;
 DROP TABLE IF EXISTS security_settings CASCADE;
@@ -78,6 +88,7 @@ CREATE TABLE signalement_details (
     budget_estime NUMERIC(15,2),
     statut_manager VARCHAR(50),
     date_modification TIMESTAMP,
+    entreprise_assignee VARCHAR(255),                       -- Nom entreprise assignée (utilisé par le manager)
     geom GEOGRAPHY(Point, 4326),
     
     CONSTRAINT fk_details_signalement 
@@ -102,7 +113,7 @@ CREATE TABLE signalement_status (
 );
 
 -- ============================================================================
--- SECTION 4: TABLE SIGNALEMENT FIREBASE (avec colonnes d'avancement)
+-- SECTION 4: TABLE SIGNALEMENT FIREBASE (synchronisation mobile)
 -- ============================================================================
 
 CREATE TABLE signalement_firebase (
@@ -123,6 +134,7 @@ CREATE TABLE signalement_firebase (
     probleme_nom VARCHAR(200),
     description TEXT,
     photo_url TEXT,
+    photos TEXT,                                            -- JSON array de photos en base64
     
     -- Données financières
     surface NUMERIC(10,2),
@@ -134,14 +146,13 @@ CREATE TABLE signalement_firebase (
     entreprise_nom VARCHAR(200),
     
     -- Statuts
-    status VARCHAR(50),                                    -- Statut Firebase original
-    statut_local VARCHAR(50) DEFAULT 'non_traite',         -- Statut local
+    status VARCHAR(50),                                    -- Statut Firebase original (nouveau, en_cours, termine)
+    statut_local VARCHAR(50) DEFAULT 'non_traite',         -- Statut local géré par le manager
     
-    -- ========== COLONNES D'AVANCEMENT (NOUVELLES) ==========
-    avancement_pourcentage INTEGER DEFAULT 0,              -- 0%, 50%, 100%
+    -- Colonnes d'avancement (ajoutées pour le suivi de progression)
+    avancement_pourcentage INTEGER DEFAULT 0,              -- 0% = nouveau, 50% = en_cours, 100% = terminé
     date_debut_travaux TIMESTAMP,                          -- Date passage à "en_cours" (50%)
     date_fin_travaux TIMESTAMP,                            -- Date passage à "terminé" (100%)
-    -- =======================================================
     
     -- Notes du manager
     notes_manager TEXT,
@@ -151,9 +162,8 @@ CREATE TABLE signalement_firebase (
     date_synchronisation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_modification_local TIMESTAMP,
     
-    -- Synchronisation
-    needs_firebase_sync BOOLEAN DEFAULT FALSE,             -- Flag pour sync vers Firebase
-    photos TEXT                                             -- Photos JSON array
+    -- Synchronisation vers Firebase RTDB
+    needs_firebase_sync BOOLEAN DEFAULT FALSE              -- Flag pour auto-push vers Firebase après modification
 );
 
 -- Index pour signalement_firebase
@@ -163,6 +173,40 @@ CREATE INDEX idx_signalement_firebase_status ON signalement_firebase(status);
 CREATE INDEX idx_signalement_firebase_statut_local ON signalement_firebase(statut_local);
 CREATE INDEX idx_signalement_firebase_avancement ON signalement_firebase(avancement_pourcentage);
 CREATE INDEX idx_signalement_firebase_geom ON signalement_firebase USING GIST (geom);
+
+-- ============================================================================
+-- SECTION 4B: HISTORIQUE D'AVANCEMENT (traçabilité des changements de statut)
+-- ============================================================================
+
+CREATE TABLE historique_avancement (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- Référence au signalement (local ou Firebase)
+    signalement_id BIGINT,                                 -- ID signalement_details (local)
+    firebase_signalement_id BIGINT,                        -- ID signalement_firebase
+    
+    -- Informations du changement
+    ancien_statut VARCHAR(50),                             -- Statut avant changement
+    nouveau_statut VARCHAR(50),                            -- Nouveau statut
+    ancien_avancement INTEGER,                             -- Avancement avant (0, 50, 100)
+    nouveau_avancement INTEGER,                            -- Nouvel avancement (0, 50, 100)
+    
+    -- Métadonnées
+    date_changement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   -- Date du changement
+    utilisateur_id VARCHAR(255),                           -- Qui a fait le changement
+    commentaire TEXT,                                      -- Notes optionnelles
+    
+    -- Contrainte: au moins un des deux IDs doit être renseigné
+    CONSTRAINT chk_signalement_ref CHECK (
+        signalement_id IS NOT NULL OR firebase_signalement_id IS NOT NULL
+    )
+);
+
+-- Index pour l'historique
+CREATE INDEX idx_historique_signalement_id ON historique_avancement(signalement_id);
+CREATE INDEX idx_historique_firebase_id ON historique_avancement(firebase_signalement_id);
+CREATE INDEX idx_historique_date ON historique_avancement(date_changement);
+CREATE INDEX idx_historique_nouveau_statut ON historique_avancement(nouveau_statut);
 
 -- ============================================================================
 -- SECTION 5: TABLES D'AUTHENTIFICATION
@@ -200,6 +244,7 @@ CREATE TABLE user_sessions (
     ip_address VARCHAR(50),
     user_agent TEXT,
     
+    -- ON UPDATE CASCADE: permet la mise à jour automatique du firebase_uid lors de la sync
     CONSTRAINT fk_session_user 
         FOREIGN KEY (firebase_uid) REFERENCES local_users(firebase_uid) ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -221,7 +266,7 @@ CREATE TABLE security_settings (
 );
 
 -- ============================================================================
--- SECTION 6: DONNÉES DE TEST / RÉFÉRENCE
+-- SECTION 6: DONNÉES DE RÉFÉRENCE
 -- ============================================================================
 
 -- Profils utilisateurs
@@ -252,8 +297,7 @@ INSERT INTO probleme (nom, detail, cout_par_m2) VALUES
 INSERT INTO security_settings (session_duration, max_login_attempts, lockout_duration, auto_lock_enabled) 
 VALUES (30, 5, 15, TRUE);
 
--- Utilisateur test pour les démonstrations
--- IMPORTANT: password_hash = BCrypt de "password123" et password_plain_temp pour la sync Firebase
+-- Utilisateurs de test (password = "password123")
 INSERT INTO local_users (firebase_uid, email, display_name, role, synced_to_firebase, password_hash, password_plain_temp) 
 VALUES 
     ('manager-001', 'manager@routefr.com', 'Manager Test', 'MANAGER', FALSE, 
@@ -262,31 +306,7 @@ VALUES
      '$2a$10$N9qo8uLOickgx2ZMRZoMye.IjqQBrkHx6g0B7Q7QxKq/7FhqxHPOm', 'password123');
 
 -- ============================================================================
--- SECTION 7: SIGNALEMENTS DE TEST
--- ============================================================================
-
--- Signalement de test #1
--- INSERT INTO signalement (idprofils, datetime_signalement) 
--- VALUES (1, '2026-01-10 08:30:00');
-
--- INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires) 
--- VALUES (1, 1, 1, -18.8792, 47.5146, 12.50, 'Pres arret bus');
-
--- INSERT INTO signalement_status (id_signalement, idstatut) 
--- VALUES (1, 10);
-
--- -- Signalement de test #2
--- INSERT INTO signalement (idprofils, datetime_signalement) 
--- VALUES (1, '2026-01-12 14:15:00');
-
--- INSERT INTO signalement_details (id_signalement, id_probleme, id_entreprise, latitude, longitude, surface, commentaires, notes_manager) 
--- VALUES (2, 2, 1, -18.8725, 47.5310, 20.00, 'Route fissuree', 'deja traite');
-
--- INSERT INTO signalement_status (id_signalement, idstatut) 
--- VALUES (2, 30);
-
--- ============================================================================
--- SECTION 8: VUE RÉCAPITULATIVE
+-- SECTION 7: VUE RÉCAPITULATIVE
 -- ============================================================================
 
 CREATE OR REPLACE VIEW vue_recapitulation AS
@@ -315,18 +335,20 @@ LEFT JOIN entreprise e ON sd.id_entreprise = e.id
 LEFT JOIN signalement_status ss ON ss.id_signalement = s.id;
 
 -- ============================================================================
--- SECTION 9: COMMENTAIRES SUR LES COLONNES D'AVANCEMENT
+-- SECTION 8: COMMENTAIRES MÉTIER
 -- ============================================================================
 
 COMMENT ON COLUMN signalement_firebase.avancement_pourcentage IS 
     'Pourcentage d''avancement: 0% = nouveau, 50% = en_cours, 100% = terminé';
-
 COMMENT ON COLUMN signalement_firebase.date_debut_travaux IS 
-    'Date de passage au statut "en_cours" (50%)';
-
+    'Date de passage au statut en_cours (50%)';
 COMMENT ON COLUMN signalement_firebase.date_fin_travaux IS 
-    'Date de passage au statut "terminé" (100%)';
+    'Date de passage au statut terminé (100%)';
+COMMENT ON COLUMN signalement_firebase.needs_firebase_sync IS 
+    'Flag pour déclencher l''auto-push vers Firebase RTDB après modification';
+COMMENT ON TABLE historique_avancement IS 
+    'Historique de tous les changements de statut/avancement pour traçabilité';
 
 -- ============================================================================
--- FIN DU SCRIPT
+-- FIN DU SCRIPT - Base prête pour docker compose up
 -- ============================================================================

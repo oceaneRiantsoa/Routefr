@@ -36,7 +36,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // Désactiver CSRF pour API REST
-                .cors(cors -> cors.disable()) // Configurer CORS si nécessaire
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activer CORS avec la config définie
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // API
                                                                                                              // stateless
                 )
