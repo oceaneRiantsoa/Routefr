@@ -2,7 +2,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+ENV CYPRESS_INSTALL_BINARY=0
+RUN npm install --prefer-offline --no-audit --network-timeout=120000
 COPY . .
 RUN npm run build
 

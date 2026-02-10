@@ -149,7 +149,11 @@ CREATE TABLE signalement_firebase (
     -- Dates
     date_creation_firebase TIMESTAMP,                      -- Date création sur mobile
     date_synchronisation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_modification_local TIMESTAMP
+    date_modification_local TIMESTAMP,
+    
+    -- Synchronisation
+    needs_firebase_sync BOOLEAN DEFAULT FALSE,             -- Flag pour sync vers Firebase
+    photos TEXT                                             -- Photos JSON array
 );
 
 -- Index pour signalement_firebase

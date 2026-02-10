@@ -8,6 +8,7 @@ import com.example.projet.dto.UserSyncResultDTO;
 import com.example.projet.entity.LocalUser;
 import com.example.projet.entity.SignalementFirebase;
 import com.example.projet.repository.SignalementFirebaseRepository;
+import com.example.projet.repository.SignalementDetailsRepository;
 import com.example.projet.repository.LocalUserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.auth.FirebaseAuth;
@@ -50,6 +51,7 @@ public class SyncService {
 
     private final FirebaseDatabase firebaseDatabase;
     private final SignalementFirebaseRepository signalementFirebaseRepository;
+    private final SignalementDetailsRepository signalementDetailsRepository;
     private final LocalUserRepository localUserRepository;
     
     @Autowired
@@ -340,6 +342,10 @@ public class SyncService {
             }
         }
         
+        // Mapper le status Firebase vers statutLocal et avancementPourcentage
+        String statutLocal = mapFirebaseStatusToLocal(dto.getStatus());
+        Integer avancementPourcentage = mapStatusToAvancement(dto.getStatus());
+
         return SignalementFirebase.builder()
                 .firebaseId(dto.getId())
                 .userId(dto.getUserId())
@@ -358,7 +364,8 @@ public class SyncService {
                 .entrepriseId(dto.getEntrepriseId())
                 .entrepriseNom(dto.getEntrepriseNom())
                 .dateSynchronisation(LocalDateTime.now())
-                .statutLocal("non_traite") // Statut initial côté manager
+                .statutLocal(statutLocal)
+                .avancementPourcentage(avancementPourcentage)
                 .geom(geom)
                 .build();
     }
@@ -378,6 +385,10 @@ public class SyncService {
         entity.setBudget(dto.getBudget());
         entity.setPhotoUrl(dto.getPhotoUrl());
         entity.setDateSynchronisation(LocalDateTime.now());
+        
+        // Synchroniser statutLocal et avancementPourcentage depuis le status Firebase
+        entity.setStatutLocal(mapFirebaseStatusToLocal(dto.getStatus()));
+        entity.setAvancementPourcentage(mapStatusToAvancement(dto.getStatus()));
         
         // Mettre à jour les photos
         if (dto.getPhotos() != null && !dto.getPhotos().isEmpty()) {
@@ -627,20 +638,6 @@ public class SyncService {
             // 4. Mettre à jour les métadonnées si au moins un envoi réussi
             if (!envoyes.isEmpty()) {
                 updatePushMetadataViaRest(envoyes.size());
-                
-                // Remettre needsFirebaseSync = false pour les signalements envoyés avec succès
-                for (String firebaseKey : envoyes) {
-                    try {
-                        Optional<SignalementFirebase> entity = signalementFirebaseRepository.findByFirebaseId(firebaseKey);
-                        if (entity.isPresent()) {
-                            entity.get().setNeedsFirebaseSync(false);
-                            signalementFirebaseRepository.save(entity.get());
-                        }
-                    } catch (Exception e) {
-                        log.warn("⚠️ Erreur reset sync flag pour {}: {}", firebaseKey, e.getMessage());
-                    }
-                }
-                log.info("🔄 Flags needsFirebaseSync remis à false pour {} signalements", envoyes.size());
             }
             
             log.info("✅ Push terminé - Nouveaux: {}, Mis à jour: {}, Erreurs: {}", 
@@ -677,14 +674,21 @@ public class SyncService {
         try {
             SignalementPushDTO dto = null;
             
-            // Chercher dans les signalements Firebase
+            // Chercher d'abord dans les signalements Firebase
             if (signalementId.startsWith("local_")) {
+                // C'est un ID local
                 Long localId = Long.parseLong(signalementId.replace("local_", ""));
                 dto = getLocalSignalementForPush(localId);
             } else {
+                // C'est un ID Firebase ou un ID local numérique
                 try {
                     Long localId = Long.parseLong(signalementId);
-                    dto = getLocalSignalementForPush(localId);
+                    // Vérifier si c'est un ID avec offset (Firebase)
+                    if (localId >= 10000) {
+                        dto = getFirebaseSignalementForPush(localId - 10000);
+                    } else {
+                        dto = getLocalSignalementForPush(localId);
+                    }
                 } catch (NumberFormatException e) {
                     // C'est un ID Firebase string
                     dto = getFirebaseSignalementByFirebaseId(signalementId);
@@ -746,28 +750,49 @@ public class SyncService {
     }
     
     /**
-     * Récupérer tous les signalements modifiés (needsFirebaseSync=true) pour push vers Firebase
+     * Récupérer tous les signalements formatés pour l'envoi Firebase
      */
     private List<SignalementPushDTO> getAllSignalementsForPush() {
         List<SignalementPushDTO> result = new ArrayList<>();
         long timestamp = System.currentTimeMillis();
         
-        // Uniquement les signalements Firebase modifiés localement
-        List<SignalementFirebase> modifiedResults = signalementFirebaseRepository.findByNeedsFirebaseSyncTrue();
-        for (SignalementFirebase entity : modifiedResults) {
+        // 1. Signalements locaux (signalement_details)
+        List<Object[]> localResults = signalementDetailsRepository.findAllSignalementsForManager();
+        for (Object[] row : localResults) {
+            result.add(mapLocalToSignalementPushDTO(row, timestamp));
+        }
+        
+        // 2. Signalements Firebase synchronisés (signalement_firebase)
+        List<SignalementFirebase> firebaseResults = signalementFirebaseRepository.findAll();
+        for (SignalementFirebase entity : firebaseResults) {
             result.add(mapFirebaseToSignalementPushDTO(entity, timestamp));
         }
         
-        log.debug("📋 {} signalements modifiés à pousser vers Firebase", result.size());
+        log.debug("📋 Préparation de {} signalements pour push ({} locaux + {} Firebase)",
+                result.size(), localResults.size(), firebaseResults.size());
         
         return result;
     }
     
     /**
-     * Récupérer un signalement Firebase formaté pour push par son ID local
+     * Récupérer un signalement local formaté pour push
      */
     private SignalementPushDTO getLocalSignalementForPush(Long localId) {
-        return signalementFirebaseRepository.findById(localId)
+        List<Object[]> results = signalementDetailsRepository.findAllSignalementsForManager();
+        for (Object[] row : results) {
+            Long id = ((Number) row[0]).longValue();
+            if (id.equals(localId)) {
+                return mapLocalToSignalementPushDTO(row, System.currentTimeMillis());
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Récupérer un signalement Firebase formaté pour push
+     */
+    private SignalementPushDTO getFirebaseSignalementForPush(Long firebaseLocalId) {
+        return signalementFirebaseRepository.findById(firebaseLocalId)
                 .map(entity -> mapFirebaseToSignalementPushDTO(entity, System.currentTimeMillis()))
                 .orElse(null);
     }
@@ -779,6 +804,48 @@ public class SyncService {
         return signalementFirebaseRepository.findByFirebaseId(firebaseId)
                 .map(entity -> mapFirebaseToSignalementPushDTO(entity, System.currentTimeMillis()))
                 .orElse(null);
+    }
+    
+    /**
+     * Mapper un signalement local vers SignalementPushDTO
+     */
+    private SignalementPushDTO mapLocalToSignalementPushDTO(Object[] row, long timestamp) {
+        Long id = ((Number) row[0]).longValue();
+        Integer idStatut = row[14] != null ? ((Number) row[14]).intValue() : 10;
+        
+        BigDecimal surface = row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO;
+        BigDecimal coutParM2 = row[7] != null ? new BigDecimal(row[7].toString()) : BigDecimal.ZERO;
+        
+        String status = getStatusCode(idStatut);
+        
+        return SignalementPushDTO.builder()
+                .id(null) // Pas d'ID Firebase pour les signalements locaux
+                .localId(id)
+                .latitude(row[2] != null ? ((Number) row[2]).doubleValue() : null)
+                .longitude(row[3] != null ? ((Number) row[3]).doubleValue() : null)
+                .problemeId(row[4] != null ? row[4].toString() : null)
+                .problemeNom(row[4] != null ? row[4].toString() : null)
+                .description(row[10] != null ? row[10].toString() : null)
+                .status(status)
+                .statutLibelle(getStatutLibelle(idStatut))
+                .surface(surface)
+                .budget(surface.multiply(coutParM2))
+                .budgetEstime(row[11] != null ? new BigDecimal(row[11].toString()) : null)
+                .coutParM2(coutParM2)
+                .entrepriseId(row[8] != null ? row[8].toString() : null)
+                .entrepriseNom(row[9] != null ? row[9].toString() : null)
+                .notesManager(row[12] != null ? row[12].toString() : null)
+                .commentaires(row[10] != null ? row[10].toString() : null)
+                .dateCreation(row[5] != null ? ((java.sql.Timestamp) row[5]).getTime() : null)
+                .dateModification(row[13] != null ? ((java.sql.Timestamp) row[13]).getTime() : null)
+                .datePush(timestamp)
+                .userId(null)
+                .userEmail(null)
+                .photoUrl(null)
+                .source("local")
+                .couleur(getStatusColor(idStatut))
+                .icone(getProblemeIcone(row[4] != null ? row[4].toString() : null))
+                .build();
     }
     
     /**
@@ -956,6 +1023,47 @@ public class SyncService {
             case 30: return "#4CAF50"; // Vert - Traité
             case 40: return "#F44336"; // Rouge - Rejeté
             default: return "#FFC107"; // Jaune - En attente
+        }
+    }
+    
+    /**
+     * Mappe le status Firebase vers un statutLocal normalisé
+     */
+    private String mapFirebaseStatusToLocal(String firebaseStatus) {
+        if (firebaseStatus == null) return "nouveau";
+        switch (firebaseStatus.toLowerCase()) {
+            case "en_cours":
+            case "en cours":
+                return "en_cours";
+            case "traite":
+            case "traité":
+            case "termine":
+                return "termine";
+            case "rejete":
+            case "rejeté":
+                return "rejete";
+            case "nouveau":
+            case "non_traite":
+            default:
+                return "nouveau";
+        }
+    }
+    
+    /**
+     * Mappe le status Firebase vers un pourcentage d'avancement
+     */
+    private Integer mapStatusToAvancement(String status) {
+        if (status == null) return 0;
+        switch (status.toLowerCase()) {
+            case "en_cours":
+            case "en cours":
+                return 50;
+            case "traite":
+            case "traité":
+            case "termine":
+                return 100;
+            default:
+                return 0;
         }
     }
     

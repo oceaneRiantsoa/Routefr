@@ -143,19 +143,45 @@ public class SignalementController {
             @RequestBody AvancementDTO avancementDTO) {
         log.info("PUT /api/manager/signalements/{}/avancement - Mise à jour avancement: {}", id, avancementDTO);
         try {
-            SignalementFirebase updated = statistiquesService.updateAvancement(id, avancementDTO);
-            
-            // Utiliser HashMap car Map.of() n'accepte pas les valeurs null
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Avancement mis à jour");
-            response.put("id", updated.getId());
-            response.put("avancement", updated.getAvancementPourcentage());
-            response.put("status", updated.getStatus());
-            response.put("dateDebutTravaux", updated.getDateDebutTravaux() != null ? updated.getDateDebutTravaux().toString() : null);
-            response.put("dateFinTravaux", updated.getDateFinTravaux() != null ? updated.getDateFinTravaux().toString() : null);
-            
-            return ResponseEntity.ok(response);
+            if (id >= 10000L) {
+                // Signalement Firebase - soustraire l'offset pour obtenir l'ID réel en BDD
+                Long dbId = id - 10000L;
+                SignalementFirebase updated = statistiquesService.updateAvancement(dbId, avancementDTO);
+                
+                // Utiliser HashMap car Map.of() n'accepte pas les valeurs null
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Avancement mis à jour");
+                response.put("id", updated.getId());
+                response.put("avancement", updated.getAvancementPourcentage());
+                response.put("status", updated.getStatus());
+                response.put("dateDebutTravaux", updated.getDateDebutTravaux() != null ? updated.getDateDebutTravaux().toString() : null);
+                response.put("dateFinTravaux", updated.getDateFinTravaux() != null ? updated.getDateFinTravaux().toString() : null);
+                return ResponseEntity.ok(response);
+            } else {
+                // Signalement local - convertir l'avancement en mise à jour de statut
+                SignalementUpdateDTO updateDTO = new SignalementUpdateDTO();
+                String statut = avancementDTO.getStatut().toLowerCase();
+                if (statut.contains("nouveau") || statut.equals("non_traite")) {
+                    updateDTO.setIdStatut(10);
+                } else if (statut.contains("cours")) {
+                    updateDTO.setIdStatut(20);
+                } else if (statut.contains("termin") || statut.equals("traite")) {
+                    updateDTO.setIdStatut(30);
+                } else if (statut.contains("rejet")) {
+                    updateDTO.setIdStatut(40);
+                } else {
+                    updateDTO.setIdStatut(10);
+                }
+                SignalementDTO updated = signalementService.updateSignalement(id, updateDTO);
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Avancement mis à jour");
+                response.put("id", updated.getId());
+                response.put("avancement", updated.getAvancementPourcentage());
+                response.put("status", updated.getStatutLibelle());
+                return ResponseEntity.ok(response);
+            }
         } catch (RuntimeException e) {
             log.error("Erreur lors de la mise à jour de l'avancement: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
@@ -178,5 +204,32 @@ public class SignalementController {
             Map.of("pourcentage", 100, "statut", "termine", "libelle", "Terminé", "color", "#27ae60", "icon", "🟢")
         );
         return ResponseEntity.ok(avancements);
+    }
+    
+    /**
+     * Récupère l'historique d'avancement d'un signalement
+     */
+    @GetMapping("/{id}/historique")
+    @Operation(summary = "Historique d'avancement", description = "Récupère l'historique des changements de statut d'un signalement")
+    public ResponseEntity<?> getHistorique(@PathVariable Long id) {
+        log.info("GET /api/manager/signalements/{}/historique - Récupération de l'historique", id);
+        try {
+            var historique = signalementService.getHistoriqueAvancement(id);
+            return ResponseEntity.ok(historique);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération de l'historique: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * Récupère les statistiques de temps de traitement moyen
+     */
+    @GetMapping("/statistiques/traitement")
+    @Operation(summary = "Statistiques de traitement", description = "Temps moyen de prise en charge et de traitement des signalements")
+    public ResponseEntity<Map<String, Object>> getStatistiquesTraitement() {
+        log.info("GET /api/manager/signalements/statistiques/traitement - Statistiques de traitement");
+        Map<String, Object> stats = signalementService.getStatistiquesTraitement();
+        return ResponseEntity.ok(stats);
     }
 }
