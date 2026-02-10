@@ -87,7 +87,7 @@ public class SignalementService {
             entity.setAvancementPourcentage(avancement);
             entity.setStatutLocal(getStatutCodeFromId(updateDTO.getIdStatut()));
             entity.setStatus(getStatutCodeFromId(updateDTO.getIdStatut()));
-            
+
             LocalDateTime now = LocalDateTime.now();
             if (updateDTO.getIdStatut() == 20 && entity.getDateDebutTravaux() == null) {
                 entity.setDateDebutTravaux(now);
@@ -131,7 +131,7 @@ public class SignalementService {
             String code = mapAvancementToStatutCode(avancement);
             stats.put(code, stats.getOrDefault(code, 0L) + count);
         }
-        
+
         // Compter les rejetés séparément
         List<SignalementFirebase> all = firebaseRepository.findAll();
         long rejetes = all.stream()
@@ -150,7 +150,8 @@ public class SignalementService {
      * Récupère la liste des entreprises disponibles
      */
     public List<EntrepriseDTO> getAllEntreprises() {
-        // On garde cette méthode pour compatibilité - sera remplacé par un appel direct au repository entreprise si besoin
+        // On garde cette méthode pour compatibilité - sera remplacé par un appel direct
+        // au repository entreprise si besoin
         return List.of();
     }
 
@@ -176,7 +177,8 @@ public class SignalementService {
         List<String> photos = null;
         if (entity.getPhotos() != null && !entity.getPhotos().isEmpty()) {
             try {
-                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {});
+                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {
+                });
             } catch (Exception e) {
                 log.warn("Erreur lecture photos JSON: {}", e.getMessage());
             }
@@ -201,7 +203,9 @@ public class SignalementService {
                 .idStatut(idStatut)
                 .statutLibelle(SignalementDTO.getStatutLibelle(idStatut))
                 .budgetCalcule(budgetCalcule)
-                .avancementPourcentage(entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0)
+                // Always compute avancement from the statut; ignore any metadata/numeric
+                // avancement stored in Firebase
+                .avancementPourcentage(mapStatutToAvancement(idStatut))
                 .dateDebutTravaux(entity.getDateDebutTravaux())
                 .dateFinTravaux(entity.getDateFinTravaux())
                 .photos(photos)
@@ -213,41 +217,60 @@ public class SignalementService {
      */
     private Integer mapAvancementToStatutId(SignalementFirebase entity) {
         String status = entity.getStatus() != null ? entity.getStatus().toLowerCase() : "";
-        if ("rejete".equals(status) || "rejeté".equals(status)) return 40;
-        
-        Integer avancement = entity.getAvancementPourcentage() != null ? entity.getAvancementPourcentage() : 0;
-        switch (avancement) {
-            case 50: return 20;
-            case 100: return 30;
-            default: return 10;
-        }
+
+        // Mapper directement le statut Firebase
+        if ("terminate".equals(status) || "termine".equals(status) || "terminé".equals(status))
+            return 30;
+        if ("en_cours".equals(status) || "en cours".equals(status))
+            return 20;
+        if ("rejete".equals(status) || "rejeté".equals(status))
+            return 40;
+        if ("nouveau".equals(status))
+            return 10;
+
+        // Ne pas prendre en compte les champs metadata/avancementPourcentage.
+        // Se baser uniquement sur le champ `status` fourni par Firebase.
+        return 10; // statut inconnu -> nouveau
     }
 
     private String mapAvancementToStatutCode(Integer avancement) {
-        if (avancement == null) return "EN_ATTENTE";
+        if (avancement == null)
+            return "EN_ATTENTE";
         switch (avancement) {
-            case 50: return "EN_COURS";
-            case 100: return "TRAITE";
-            default: return "EN_ATTENTE";
+            case 50:
+                return "EN_COURS";
+            case 100:
+                return "TRAITE";
+            default:
+                return "EN_ATTENTE";
         }
     }
 
     private Integer mapStatutToAvancement(Integer idStatut) {
-        if (idStatut == null) return 0;
+        if (idStatut == null)
+            return 0;
         switch (idStatut) {
-            case 20: return 50;
-            case 30: return 100;
-            default: return 0;
+            case 20:
+                return 50;
+            case 30:
+                return 100;
+            default:
+                return 0;
         }
     }
 
     private String getStatutCodeFromId(Integer idStatut) {
-        if (idStatut == null) return "nouveau";
+        if (idStatut == null)
+            return "nouveau";
         switch (idStatut) {
-            case 20: return "en_cours";
-            case 30: return "termine";
-            case 40: return "rejete";
-            default: return "nouveau";
+            case 20:
+                return "en_cours";
+            case 30:
+                return "termine";
+            case 40:
+                return "rejete";
+            default:
+                return "nouveau";
         }
     }
 }
