@@ -87,11 +87,6 @@ public class SignalementFirebase {
     @Column(name = "date_modification_local")
     private LocalDateTime dateModificationLocal;
 
-    // Marqueur pour synchroniser les modifications vers Firebase
-    @Column(name = "needs_firebase_sync")
-    @Builder.Default
-    private Boolean needsFirebaseSync = false;
-
     // Champs pour le suivi d'avancement
     @Column(name = "avancement_pourcentage")
     @Builder.Default
@@ -102,6 +97,10 @@ public class SignalementFirebase {
 
     @Column(name = "date_fin_travaux")
     private LocalDateTime dateFinTravaux;
+
+    @Column(name = "needs_firebase_sync")
+    @Builder.Default
+    private Boolean needsFirebaseSync = false;
 
     @Column(columnDefinition = "geography(Point,4326)")
     private Point geom;

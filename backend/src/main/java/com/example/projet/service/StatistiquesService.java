@@ -202,6 +202,7 @@ public class StatistiquesService {
             pourcentage = 0;
             codeStatut = 10; // EN_ATTENTE
             signalement.setStatus("nouveau");
+            signalement.setStatutLocal("nouveau");
             // Réinitialiser les dates si retour à nouveau
             signalement.setDateDebutTravaux(null);
             signalement.setDateFinTravaux(null);
@@ -209,6 +210,7 @@ public class StatistiquesService {
             pourcentage = 50;
             codeStatut = 20; // EN_COURS
             signalement.setStatus("en_cours");
+            signalement.setStatutLocal("en_cours");
             // Enregistrer la date de début si pas déjà définie
             if (signalement.getDateDebutTravaux() == null) {
                 signalement.setDateDebutTravaux(now);
@@ -219,6 +221,7 @@ public class StatistiquesService {
             pourcentage = 100;
             codeStatut = 30; // TERMINE/TRAITE
             signalement.setStatus("termine");
+            signalement.setStatutLocal("termine");
             // Enregistrer la date de fin
             signalement.setDateFinTravaux(now);
             // Si pas de date de début, la définir aussi
@@ -229,6 +232,7 @@ public class StatistiquesService {
             pourcentage = 0;
             codeStatut = 40; // REJETE
             signalement.setStatus("rejete");
+            signalement.setStatutLocal("rejete");
             // Réinitialiser les dates si rejeté
             signalement.setDateDebutTravaux(null);
             signalement.setDateFinTravaux(null);
