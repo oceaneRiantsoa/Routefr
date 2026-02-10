@@ -46,7 +46,10 @@ public class SignalementDTO {
     private LocalDateTime dateFinTravaux;
     private String problemeNom;
     
-    // Budget calculé (surface * cout_par_m2)
+    // Niveau de réparation (1 à 10)
+    private Integer niveauReparation;
+
+    // Budget calculé (prix_par_m2 * niveau * surface)
     private BigDecimal budgetCalcule;
     private BigDecimal coutParM2;
     

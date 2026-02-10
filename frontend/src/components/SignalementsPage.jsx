@@ -62,6 +62,8 @@ const SignalementsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [statistiques, setStatistiques] = useState({});
   const [entreprises, setEntreprises] = useState([]);
+  const [problemes, setProblemes] = useState([]); // Types de problèmes avec prix
+  const [showPrixModal, setShowPrixModal] = useState(false); // Modal pour modifier les prix
   const [successMessage, setSuccessMessage] = useState('');
   const [updatingAvancement, setUpdatingAvancement] = useState(null); // ID du signalement en cours de màj
 
@@ -74,15 +76,17 @@ const SignalementsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [signalementsRes, statsRes, entreprisesRes] = await Promise.all([
+      const [signalementsRes, statsRes, entreprisesRes, problemesRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/manager/signalements`),
         axios.get(`${API_BASE_URL}/api/manager/signalements/statistiques`),
-        axios.get(`${API_BASE_URL}/api/manager/signalements/entreprises`)
+        axios.get(`${API_BASE_URL}/api/manager/signalements/entreprises`),
+        axios.get(`${API_BASE_URL}/api/manager/signalements/problemes`)
       ]);
       setSignalements(signalementsRes.data);
       setFilteredSignalements(signalementsRes.data);
       setStatistiques(statsRes.data);
       setEntreprises(entreprisesRes.data);
+      setProblemes(problemesRes.data);
     } catch (err) {
       console.error('Erreur chargement:', err);
       setError('Erreur lors du chargement des signalements');
@@ -151,6 +155,32 @@ const SignalementsPage = () => {
     setSelectedSignalement(null);
   };
 
+  // Mettre à jour le prix d'un type de problème
+  const handleUpdatePrix = async (problemeId, nouveauPrix) => {
+    try {
+      await axios.put(`${API_BASE_URL}/api/manager/signalements/problemes/${problemeId}/prix`, {
+        coutParM2: nouveauPrix
+      });
+      setSuccessMessage('Prix par m² mis à jour !');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      loadData(); // Recharger pour mettre à jour les budgets calculés
+    } catch (err) {
+      console.error('Erreur mise à jour prix:', err);
+      setError('Erreur lors de la mise à jour du prix');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Trouver le prix par m² pour un problème
+  const getPrixParM2 = (problemeNom) => {
+    if (!problemeNom) return 50000;
+    const probleme = problemes.find(p => 
+      p.nom?.toLowerCase().includes(problemeNom.toLowerCase()) ||
+      problemeNom.toLowerCase().includes(p.nom?.toLowerCase())
+    );
+    return probleme?.coutParM2 || 50000;
+  };
+
   // Calculer le total
   const totalSignalements = signalements.length;
 
@@ -161,10 +191,46 @@ const SignalementsPage = () => {
         <span className="total-badge">
           Total: {totalSignalements} signalement{totalSignalements > 1 ? 's' : ''}
         </span>
-        <button className="refresh-btn" onClick={loadData}>
-          Actualiser
-        </button>
+        <div className="top-bar-actions">
+          <button className="prix-btn" onClick={() => setShowPrixModal(!showPrixModal)}>
+            💰 Prix par m²
+          </button>
+          <button className="refresh-btn" onClick={loadData}>
+            Actualiser
+          </button>
+        </div>
       </div>
+
+      {/* Section des prix par type de problème */}
+      {showPrixModal && (
+        <div className="prix-section">
+          <h3>💰 Prix par m² selon le type de problème (en Ariary)</h3>
+          <div className="prix-grid">
+            {problemes.map(probleme => (
+              <div key={probleme.id} className="prix-item">
+                <span className="prix-nom">{probleme.nom}</span>
+                <div className="prix-input-group">
+                  <input
+                    type="number"
+                    className="prix-input"
+                    defaultValue={probleme.coutParM2}
+                    onBlur={(e) => {
+                      const newValue = parseFloat(e.target.value);
+                      if (newValue !== probleme.coutParM2) {
+                        handleUpdatePrix(probleme.id, newValue);
+                      }
+                    }}
+                  />
+                  <span className="prix-unit">Ar/m²</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="prix-info">
+            📊 Formule: <strong>Budget = Prix/m² × Niveau (1-10) × Surface (m²)</strong>
+          </p>
+        </div>
+      )}
 
       {/* Message de succès */}
       {successMessage && (
@@ -347,10 +413,16 @@ const SignalementsPage = () => {
                         <span className="detail-value">{formatNumber(signalement.surface)} m²</span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-label">Budget estimé</span>
-                        <span className="detail-value">
-                          {signalement.budgetEstime ? `${formatNumber(signalement.budgetEstime)} Ar` : `${formatNumber(signalement.budgetCalcule)} Ar (calculé)`}
-                        </span>
+                        <span className="detail-label">Niveau</span>
+                        <span className="detail-value">{signalement.niveauReparation || 1}/10</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Prix/m²</span>
+                        <span className="detail-value">{formatNumber(signalement.coutParM2)} Ar</span>
+                      </div>
+                      <div className="detail-item budget-calcule">
+                        <span className="detail-label">💰 Budget calculé</span>
+                        <span className="detail-value">{formatNumber(signalement.budgetCalcule)} Ar</span>
                       </div>
                       <div className="detail-item">
                         <span className="detail-label">Entreprise</span>

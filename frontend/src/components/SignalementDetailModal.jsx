@@ -35,7 +35,8 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
     budgetEstime: signalement.budgetEstime || '',
     idEntreprise: signalement.idEntreprise || '',
     notesManager: signalement.notesManager || '',
-    idStatut: signalement.idStatut || 10
+    idStatut: signalement.idStatut || 10,
+    niveauReparation: signalement.niveauReparation || 1
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +68,8 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
         budgetEstime: formData.budgetEstime ? parseFloat(formData.budgetEstime) : null,
         idEntreprise: formData.idEntreprise ? parseInt(formData.idEntreprise) : null,
         notesManager: formData.notesManager || null,
-        idStatut: parseInt(formData.idStatut)
+        idStatut: parseInt(formData.idStatut),
+        niveauReparation: parseInt(formData.niveauReparation) || 1
       };
       
       await onSave(signalement.id, dataToSend);
@@ -78,9 +80,9 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
     }
   };
 
-  // Calculer le budget suggéré (surface * cout_par_m2)
-  const budgetSuggere = signalement.coutParM2 && formData.surface
-    ? parseFloat(formData.surface) * signalement.coutParM2
+  // Calculer le budget suggéré (surface * cout_par_m2 * niveau)
+  const budgetSuggere = signalement.coutParM2 && formData.surface && formData.niveauReparation
+    ? parseFloat(formData.surface) * signalement.coutParM2 * parseInt(formData.niveauReparation)
     : null;
 
   return (
@@ -162,11 +164,37 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
               </div>
 
               <div className="form-group">
+                <label htmlFor="niveauReparation">
+                  Niveau de réparation (1-10)
+                  <span className="niveau-info" title="1 = réparation légère, 10 = reconstruction complète">ℹ️</span>
+                </label>
+                <div className="niveau-selector">
+                  <input
+                    type="range"
+                    id="niveauReparation"
+                    name="niveauReparation"
+                    value={formData.niveauReparation}
+                    onChange={handleChange}
+                    min="1"
+                    max="10"
+                    step="1"
+                  />
+                  <span className="niveau-value">{formData.niveauReparation}</span>
+                </div>
+                <div className="niveau-labels">
+                  <span>Léger</span>
+                  <span>Sévère</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
                 <label htmlFor="budgetEstime">
                   Budget estimé (Ar)
                   {budgetSuggere && (
                     <span className="budget-suggestion">
-                      Suggéré: {formatNumber(budgetSuggere)} Ar
+                      Calculé: {formatNumber(budgetSuggere)} Ar
                     </span>
                   )}
                 </label>
@@ -180,6 +208,11 @@ const SignalementDetailModal = ({ signalement, entreprises = [], onSave, onClose
                   step="1"
                   min="0"
                 />
+                {signalement.coutParM2 && formData.surface && (
+                  <div className="budget-formula-hint">
+                    Formule: {formatNumber(signalement.coutParM2)} Ar/m² × {formData.surface} m² × niveau {formData.niveauReparation}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -103,6 +103,14 @@ public class SignalementFirebase {
     @Column(name = "date_fin_travaux")
     private LocalDateTime dateFinTravaux;
 
+    // Champs pour le calcul du budget
+    @Column(name = "niveau_reparation")
+    @Builder.Default
+    private Integer niveauReparation = 1;  // Niveau de 1 à 10
+
+    @Column(name = "budget_calcule")
+    private BigDecimal budgetCalcule;  // Budget calculé en Ariary: prix_par_m2 × niveau × surface
+
     @Column(columnDefinition = "geography(Point,4326)")
     private Point geom;
 }

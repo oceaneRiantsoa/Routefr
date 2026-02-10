@@ -2,6 +2,7 @@ package com.example.projet.controller;
 
 import com.example.projet.dto.AvancementDTO;
 import com.example.projet.dto.EntrepriseDTO;
+import com.example.projet.dto.ProblemeDTO;
 import com.example.projet.dto.SignalementDTO;
 import com.example.projet.dto.SignalementUpdateDTO;
 import com.example.projet.dto.StatistiquesDTO;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -178,5 +180,66 @@ public class SignalementController {
             Map.of("pourcentage", 100, "statut", "termine", "libelle", "Terminé", "color", "#27ae60", "icon", "🟢")
         );
         return ResponseEntity.ok(avancements);
+    }
+
+    // ==================== ENDPOINTS GESTION DES PRIX PAR PROBLÈME ====================
+
+    /**
+     * Récupère la liste des types de problèmes avec leurs prix par m²
+     */
+    @GetMapping("/problemes")
+    @Operation(summary = "Liste des problèmes", description = "Récupère tous les types de problèmes avec leur prix par m² en Ariary")
+    public ResponseEntity<List<ProblemeDTO>> getProblemes() {
+        log.info("GET /api/manager/signalements/problemes - Liste des types de problèmes");
+        List<ProblemeDTO> problemes = signalementService.getAllProblemes();
+        return ResponseEntity.ok(problemes);
+    }
+
+    /**
+     * Met à jour le prix par m² d'un type de problème
+     */
+    @PutMapping("/problemes/{id}/prix")
+    @Operation(summary = "Modifier le prix par m²", description = "Met à jour le prix par m² d'un type de problème en Ariary")
+    public ResponseEntity<?> updatePrixProbleme(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        log.info("PUT /api/manager/signalements/problemes/{}/prix - Mise à jour du prix", id);
+        try {
+            BigDecimal nouveauPrix = new BigDecimal(body.get("coutParM2").toString());
+            ProblemeDTO updated = signalementService.updatePrixProbleme(id, nouveauPrix);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Prix mis à jour",
+                "probleme", updated
+            ));
+        } catch (Exception e) {
+            log.error("Erreur lors de la mise à jour du prix: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Récupère les niveaux de réparation disponibles (1 à 10)
+     */
+    @GetMapping("/niveaux")
+    @Operation(summary = "Liste des niveaux", description = "Récupère les niveaux de réparation disponibles (1 à 10)")
+    public ResponseEntity<List<Map<String, Object>>> getNiveauxReparation() {
+        log.info("GET /api/manager/signalements/niveaux - Liste des niveaux de réparation");
+        List<Map<String, Object>> niveaux = Arrays.asList(
+            Map.of("niveau", 1, "libelle", "Niveau 1 - Très léger", "multiplicateur", 1),
+            Map.of("niveau", 2, "libelle", "Niveau 2 - Léger", "multiplicateur", 2),
+            Map.of("niveau", 3, "libelle", "Niveau 3 - Modéré", "multiplicateur", 3),
+            Map.of("niveau", 4, "libelle", "Niveau 4 - Significatif", "multiplicateur", 4),
+            Map.of("niveau", 5, "libelle", "Niveau 5 - Moyen", "multiplicateur", 5),
+            Map.of("niveau", 6, "libelle", "Niveau 6 - Important", "multiplicateur", 6),
+            Map.of("niveau", 7, "libelle", "Niveau 7 - Grave", "multiplicateur", 7),
+            Map.of("niveau", 8, "libelle", "Niveau 8 - Très grave", "multiplicateur", 8),
+            Map.of("niveau", 9, "libelle", "Niveau 9 - Critique", "multiplicateur", 9),
+            Map.of("niveau", 10, "libelle", "Niveau 10 - Urgent", "multiplicateur", 10)
+        );
+        return ResponseEntity.ok(niveaux);
     }
 }

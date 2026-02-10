@@ -10,10 +10,13 @@ import java.math.BigDecimal;
 @Builder
 public class SignalementUpdateDTO {
     
-    // Surface modifiable par le manager
+    // Surface modifiable par le manager (en m²)
     private BigDecimal surface;
     
-    // Budget estimé par le manager
+    // Niveau de réparation de 1 à 10 (complexité/gravité)
+    private Integer niveauReparation;
+    
+    // Budget estimé par le manager (optionnel, sinon calculé automatiquement)
     private BigDecimal budgetEstime;
     
     // ID de l'entreprise assignée (référence vers table entreprise)

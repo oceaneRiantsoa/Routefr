@@ -143,6 +143,11 @@ CREATE TABLE signalement_firebase (
     date_fin_travaux TIMESTAMP,                            -- Date passage à "terminé" (100%)
     -- =======================================================
     
+    -- ========== COLONNES CALCUL BUDGET ==========
+    niveau_reparation INTEGER DEFAULT 1 CHECK (niveau_reparation BETWEEN 1 AND 10),  -- Niveau 1 à 10
+    budget_calcule NUMERIC(15,2),                          -- Budget calculé automatiquement en Ariary
+    -- ============================================
+    
     -- Notes du manager
     notes_manager TEXT,
     
@@ -333,6 +338,12 @@ COMMENT ON COLUMN signalement_firebase.date_debut_travaux IS
 
 COMMENT ON COLUMN signalement_firebase.date_fin_travaux IS 
     'Date de passage au statut "terminé" (100%)';
+
+COMMENT ON COLUMN signalement_firebase.niveau_reparation IS 
+    'Niveau de réparation de 1 à 10 (complexité/gravité du problème)';
+
+COMMENT ON COLUMN signalement_firebase.budget_calcule IS 
+    'Budget calculé automatiquement en Ariary: prix_par_m2 × niveau × surface';
 
 -- ============================================================================
 -- FIN DU SCRIPT

@@ -1,9 +1,14 @@
 package com.example.projet.service;
 
 import com.example.projet.dto.EntrepriseDTO;
+import com.example.projet.dto.ProblemeDTO;
 import com.example.projet.dto.SignalementDTO;
 import com.example.projet.dto.SignalementUpdateDTO;
+import com.example.projet.entity.Entreprise;
+import com.example.projet.entity.Probleme;
 import com.example.projet.entity.SignalementFirebase;
+import com.example.projet.repository.EntrepriseRepository;
+import com.example.projet.repository.ProblemeRepository;
 import com.example.projet.repository.SignalementFirebaseRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +28,8 @@ import java.util.stream.Collectors;
 public class SignalementService {
 
     private final SignalementFirebaseRepository firebaseRepository;
+    private final ProblemeRepository problemeRepository;
+    private final EntrepriseRepository entrepriseRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -61,6 +68,7 @@ public class SignalementService {
     /**
      * Met à jour un signalement directement dans signalement_firebase
      * et marque needsFirebaseSync = true pour synchronisation ultérieure
+     * Calcule automatiquement le budget: prix_par_m2 × niveau × surface
      */
     @Transactional
     public SignalementDTO updateSignalement(Long id, SignalementUpdateDTO updateDTO) {
@@ -71,6 +79,11 @@ public class SignalementService {
         if (updateDTO.getSurface() != null) {
             entity.setSurface(updateDTO.getSurface());
         }
+        if (updateDTO.getNiveauReparation() != null) {
+            // Valider le niveau entre 1 et 10
+            int niveau = Math.max(1, Math.min(10, updateDTO.getNiveauReparation()));
+            entity.setNiveauReparation(niveau);
+        }
         if (updateDTO.getBudgetEstime() != null) {
             entity.setBudgetEstime(updateDTO.getBudgetEstime());
         }
@@ -80,6 +93,10 @@ public class SignalementService {
         if (updateDTO.getNotesManager() != null) {
             entity.setNotesManager(updateDTO.getNotesManager());
         }
+
+        // Calcul automatique du budget: prix_par_m2 × niveau × surface
+        BigDecimal budgetCalcule = calculerBudget(entity);
+        entity.setBudgetCalcule(budgetCalcule);
 
         // Mise à jour du statut et de l'avancement
         if (updateDTO.getIdStatut() != null) {
@@ -109,9 +126,50 @@ public class SignalementService {
         entity.setNeedsFirebaseSync(true);
 
         firebaseRepository.save(entity);
-        log.info("✅ Signalement {} mis à jour (needsFirebaseSync=true)", id);
+        log.info("✅ Signalement {} mis à jour (niveau={}, budget={} Ar, needsFirebaseSync=true)", 
+                id, entity.getNiveauReparation(), budgetCalcule);
 
         return mapFirebaseToDTO(entity);
+    }
+
+    /**
+     * Calcule le budget automatiquement: prix_par_m2 × niveau × surface
+     */
+    private BigDecimal calculerBudget(SignalementFirebase entity) {
+        // Récupérer le prix par m² depuis le type de problème
+        BigDecimal prixParM2 = getPrixParM2(entity.getProblemeNom());
+        
+        // Récupérer le niveau (défaut: 1)
+        int niveau = entity.getNiveauReparation() != null ? entity.getNiveauReparation() : 1;
+        
+        // Récupérer la surface (défaut: 0)
+        BigDecimal surface = entity.getSurface() != null ? entity.getSurface() : BigDecimal.ZERO;
+        
+        // Calcul: prix × niveau × surface
+        return prixParM2.multiply(BigDecimal.valueOf(niveau)).multiply(surface);
+    }
+
+    /**
+     * Récupère le prix par m² pour un type de problème
+     */
+    private BigDecimal getPrixParM2(String problemeNom) {
+        if (problemeNom == null || problemeNom.isEmpty()) {
+            return BigDecimal.valueOf(50000); // Prix par défaut en Ariary
+        }
+        
+        // Chercher d'abord par nom exact
+        Optional<Probleme> exact = problemeRepository.findByNomIgnoreCase(problemeNom);
+        if (exact.isPresent()) {
+            return exact.get().getCoutParM2();
+        }
+        
+        // Sinon chercher par correspondance partielle (prendre le premier)
+        List<Probleme> matches = problemeRepository.findByNomContainingIgnoreCase(problemeNom);
+        if (!matches.isEmpty()) {
+            return matches.get(0).getCoutParM2();
+        }
+        
+        return BigDecimal.valueOf(50000); // Prix par défaut si non trouvé
     }
 
     /**
@@ -150,9 +208,49 @@ public class SignalementService {
      * Récupère la liste des entreprises disponibles
      */
     public List<EntrepriseDTO> getAllEntreprises() {
-        // On garde cette méthode pour compatibilité - sera remplacé par un appel direct
-        // au repository entreprise si besoin
-        return List.of();
+        return entrepriseRepository.findAll().stream()
+                .map(e -> EntrepriseDTO.builder()
+                        .id(e.getId())
+                        .nomEntreprise(e.getNomEntreprise())
+                        .localisation(e.getLocalisation())
+                        .contact(e.getContact())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère la liste des types de problèmes avec leurs prix par m²
+     */
+    public List<ProblemeDTO> getAllProblemes() {
+        return problemeRepository.findAll().stream()
+                .map(p -> ProblemeDTO.builder()
+                        .id(p.getId())
+                        .nom(p.getNom())
+                        .detail(p.getDetail())
+                        .coutParM2(p.getCoutParM2())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Met à jour le prix par m² d'un type de problème
+     */
+    @Transactional
+    public ProblemeDTO updatePrixProbleme(Long id, BigDecimal nouveauPrix) {
+        Probleme probleme = problemeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Type de problème non trouvé: " + id));
+        
+        probleme.setCoutParM2(nouveauPrix);
+        problemeRepository.save(probleme);
+        
+        log.info("💰 Prix par m² du problème '{}' mis à jour: {} Ar", probleme.getNom(), nouveauPrix);
+        
+        return ProblemeDTO.builder()
+                .id(probleme.getId())
+                .nom(probleme.getNom())
+                .detail(probleme.getDetail())
+                .coutParM2(probleme.getCoutParM2())
+                .build();
     }
 
     /**
@@ -162,8 +260,18 @@ public class SignalementService {
         Integer idStatut = mapAvancementToStatutId(entity);
 
         BigDecimal surface = entity.getSurface() != null ? entity.getSurface() : BigDecimal.ZERO;
-        BigDecimal coutParM2 = BigDecimal.valueOf(28750);
-        BigDecimal budgetCalcule = surface.multiply(coutParM2);
+        
+        // Récupérer le prix par m² depuis le type de problème
+        BigDecimal coutParM2 = getPrixParM2(entity.getProblemeNom());
+        
+        // Niveau de réparation (défaut: 1)
+        Integer niveau = entity.getNiveauReparation() != null ? entity.getNiveauReparation() : 1;
+        
+        // Utiliser le budget calculé stocké, ou le recalculer
+        BigDecimal budgetCalcule = entity.getBudgetCalcule();
+        if (budgetCalcule == null || budgetCalcule.compareTo(BigDecimal.ZERO) == 0) {
+            budgetCalcule = coutParM2.multiply(BigDecimal.valueOf(niveau)).multiply(surface);
+        }
 
         Integer idEntreprise = null;
         if (entity.getEntrepriseId() != null) {
@@ -193,6 +301,7 @@ public class SignalementService {
                 .dateSignalement(entity.getDateCreationFirebase())
                 .dateCreationFirebase(entity.getDateCreationFirebase())
                 .surface(surface)
+                .niveauReparation(niveau)
                 .coutParM2(coutParM2)
                 .idEntreprise(idEntreprise)
                 .entrepriseNom(entity.getEntrepriseNom())

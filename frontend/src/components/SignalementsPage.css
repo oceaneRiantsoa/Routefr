@@ -545,3 +545,109 @@
   border-radius: 6px;
   border: 1px solid #e0e0e0;
 }
+
+/* ===== SECTION PRIX PAR M² ===== */
+.prix-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 30px;
+  margin: 0 20px 20px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.prix-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+}
+
+.prix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.prix-item {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12px 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(10px);
+}
+
+.prix-nom {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.prix-input-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.prix-input {
+  width: 100px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: white;
+  color: #333;
+  font-weight: 600;
+  text-align: right;
+}
+
+.prix-input:focus {
+  outline: 2px solid #ffd700;
+}
+
+.prix-unit {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.prix-info {
+  margin: 0;
+  padding-top: 10px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.prix-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.prix-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.top-bar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Budget calculé highlight */
+.detail-item.budget-calcule {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.detail-item.budget-calcule .detail-label,
+.detail-item.budget-calcule .detail-value {
+  color: white;
+}
