@@ -9,7 +9,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { logIn, logOut, personAdd } from 'ionicons/icons';
+import { logIn, logOut } from 'ionicons/icons';
 import { 
   IonApp, 
   IonRouterOutlet, 
@@ -35,13 +35,13 @@ onMounted(() => {
         uid: currentUser.uid,
       };
       // Rediriger vers la carte si connecté
-      if (router.currentRoute.value.path === '/login' || router.currentRoute.value.path === '/signup') {
+      if (router.currentRoute.value.path === '/login') {
         router.push('/map');
       }
     } else {
       user.value = null;
       // Rediriger vers login si pas connecté
-      if (router.currentRoute.value.path !== '/login' && router.currentRoute.value.path !== '/signup') {
+      if (router.currentRoute.value.path !== '/login') {
         router.push('/login');
       }
     }
@@ -50,10 +50,6 @@ onMounted(() => {
 
 const goToLogin = () => {
   router.push('/login');
-};
-
-const goToSignup = () => {
-  router.push('/signup');
 };
 
 const logout = async () => {

@@ -63,11 +63,7 @@
           </button>
         </div>
 
-        <!-- Lien inscription -->
-        <div class="login-footer">
-          <span>Pas encore de compte ?</span>
-          <button @click="goToSignup" class="btn-link">Créer un compte</button>
-        </div>
+
       </div>
     </ion-content>
   </ion-page>
@@ -129,9 +125,6 @@ const login = async () => {
   }
 };
 
-const goToSignup = () => {
-  router.push('/signup');
-};
 </script>
 
 <style scoped>
