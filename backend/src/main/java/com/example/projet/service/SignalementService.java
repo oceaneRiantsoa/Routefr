@@ -64,7 +64,16 @@ public class SignalementService {
     }
 
     /**
+     * Vérifie si un signalement a une position valide
+     */
+    private boolean hasValidPosition(SignalementFirebase entity) {
+        return entity.getLatitude() != null && entity.getLongitude() != null;
+    }
+
+    /**
      * Récupère les signalements filtrés par statut
+     * Filtre les signalements sans position (lat/lng)
+     * Utilise le champ status (pas avancementPourcentage/metadata)
      */
     public List<SignalementDTO> getSignalementsByStatut(Integer idStatut) {
         List<Object[]> results = repository.findAllSignalementsForManagerByStatut(idStatut);
@@ -515,7 +524,8 @@ public class SignalementService {
         List<String> photos = null;
         if (entity.getPhotos() != null && !entity.getPhotos().isEmpty()) {
             try {
-                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {});
+                photos = objectMapper.readValue(entity.getPhotos(), new TypeReference<List<String>>() {
+                });
             } catch (Exception e) {
                 log.warn("Erreur lecture photos JSON: {}", e.getMessage());
             }
