@@ -533,6 +533,35 @@ public class SyncService {
     }
     
     /**
+     * Push automatique d'un signalement Firebase vers Firebase RTDB après mise à jour du statut
+     * Appelé automatiquement après chaque changement de statut/avancement
+     */
+    public void autoPushSignalementToFirebase(Long dbId) {
+        try {
+            SignalementFirebase entity = signalementFirebaseRepository.findById(dbId).orElse(null);
+            if (entity == null || entity.getFirebaseId() == null || "_metadata".equals(entity.getFirebaseId())) {
+                log.debug("⏭️ Skip auto-push: signalement {} non trouvé ou metadata", dbId);
+                return;
+            }
+            
+            SignalementPushDTO dto = mapFirebaseToSignalementPushDTO(entity, System.currentTimeMillis());
+            String firebaseKey = entity.getFirebaseId();
+            boolean success = pushSignalementViaRest(firebaseKey, dto);
+            
+            if (success) {
+                entity.setNeedsFirebaseSync(false);
+                signalementFirebaseRepository.save(entity);
+                log.info("📤 Auto-push réussi: signalement {} (firebaseId={}, status={})", 
+                         dbId, firebaseKey, entity.getStatus());
+            } else {
+                log.warn("⚠️ Auto-push échoué pour signalement {}", dbId);
+            }
+        } catch (Exception e) {
+            log.error("❌ Erreur auto-push signalement {}: {}", dbId, e.getMessage());
+        }
+    }
+    
+    /**
      * Envoyer un signalement vers Firebase via REST API
      */
     private boolean pushSignalementViaRest(String key, SignalementPushDTO signalement) {
@@ -852,9 +881,21 @@ public class SyncService {
      * Mapper un signalement Firebase vers SignalementPushDTO
      */
     private SignalementPushDTO mapFirebaseToSignalementPushDTO(SignalementFirebase entity, long timestamp) {
-        String rawStatus = entity.getStatutLocal() != null ? entity.getStatutLocal() : entity.getStatus();
+        String rawStatus = entity.getStatutLocal() != null && !"non_traite".equals(entity.getStatutLocal())
+                ? entity.getStatutLocal() : entity.getStatus();
         Integer idStatut = getIdStatutFromCode(rawStatus);
         String normalizedStatus = getStatusCode(idStatut); // Toujours: nouveau, en_cours, ou termine
+        
+        // Parser les photos JSON si disponibles
+        List<String> photosList = null;
+        if (entity.getPhotos() != null && !entity.getPhotos().isEmpty()) {
+            try {
+                photosList = objectMapper.readValue(entity.getPhotos(), 
+                        new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+            } catch (Exception e) {
+                log.debug("Impossible de parser photos JSON: {}", e.getMessage());
+            }
+        }
         
         return SignalementPushDTO.builder()
                 .id(entity.getFirebaseId())
@@ -869,7 +910,7 @@ public class SyncService {
                 .surface(entity.getSurface())
                 .budget(entity.getBudget())
                 .budgetEstime(entity.getBudgetEstime())
-                .coutParM2(BigDecimal.valueOf(28750)) // Valeur par défaut
+                .coutParM2(BigDecimal.valueOf(28750))
                 .entrepriseId(entity.getEntrepriseId())
                 .entrepriseNom(entity.getEntrepriseNom())
                 .notesManager(entity.getNotesManager())
@@ -884,9 +925,17 @@ public class SyncService {
                 .userId(entity.getUserId())
                 .userEmail(entity.getUserEmail())
                 .photoUrl(entity.getPhotoUrl())
+                .photos(photosList)
                 .source("firebase")
                 .couleur(getStatusColor(idStatut))
                 .icone(getProblemeIcone(entity.getProblemeNom()))
+                .avancementPourcentage(entity.getAvancementPourcentage())
+                .dateDebutTravaux(entity.getDateDebutTravaux() != null 
+                        ? entity.getDateDebutTravaux().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() 
+                        : null)
+                .dateFinTravaux(entity.getDateFinTravaux() != null 
+                        ? entity.getDateFinTravaux().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() 
+                        : null)
                 .build();
     }
     

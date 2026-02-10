@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * DTO pour envoyer un signalement vers Firebase (format mobile)
@@ -58,6 +59,7 @@ public class SignalementPushDTO {
     
     // Photo
     private String photoUrl;
+    private List<String> photos;        // Photos array from mobile
     
     // Source des données
     private String source;              // "local" ou "firebase"
@@ -65,4 +67,9 @@ public class SignalementPushDTO {
     // Pour affichage mobile
     private String couleur;             // Couleur selon le statut
     private String icone;               // Icône selon le type de problème
+    
+    // Avancement
+    private Integer avancementPourcentage;
+    private Long dateDebutTravaux;
+    private Long dateFinTravaux;
 }

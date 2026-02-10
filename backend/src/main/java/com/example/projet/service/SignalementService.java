@@ -32,6 +32,7 @@ public class SignalementService {
     private final SignalementFirebaseRepository firebaseRepository;
     private final SignalementStatusRepository statusRepository;
     private final HistoriqueAvancementRepository historiqueRepository;
+    private final SyncService syncService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     // Offset pour distinguer les IDs Firebase des IDs locaux
@@ -271,6 +272,13 @@ public class SignalementService {
 
         log.info("Signalement Firebase {} mis à jour avec statut: {}", firebaseDbId, nouveauStatut);
 
+        // Auto-push vers Firebase pour que le mobile voie le changement
+        try {
+            syncService.autoPushSignalementToFirebase(firebaseDbId);
+        } catch (Exception e) {
+            log.warn("⚠️ Auto-push échoué après mise à jour: {}", e.getMessage());
+        }
+
         // Retourner le signalement mis à jour (avec l'offset)
         return getSignalementById(firebaseDbId + FIREBASE_ID_OFFSET).orElseThrow();
     }
@@ -401,6 +409,7 @@ public class SignalementService {
                 return "EN_COURS";
             case "traite":
             case "traité":
+            case "termine":
                 return "TRAITE";
             case "rejete":
             case "rejeté":
@@ -486,6 +495,7 @@ public class SignalementService {
                 break;
             case "traite":
             case "traité":
+            case "termine":
                 idStatut = 30;
                 break;
             case "rejete":

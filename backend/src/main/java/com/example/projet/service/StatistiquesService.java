@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class StatistiquesService {
 
     private final SignalementFirebaseRepository firebaseRepository;
+    private final SyncService syncService;
 
     /**
      * Calcule les statistiques complètes avec délais de traitement
@@ -255,7 +256,16 @@ public class StatistiquesService {
         }
 
         log.info("Mise à jour avancement signalement {}: {}% ({}) - Code statut: {}", id, pourcentage, statut, codeStatut);
-        return firebaseRepository.save(signalement);
+        SignalementFirebase saved = firebaseRepository.save(signalement);
+        
+        // Auto-push vers Firebase pour que le mobile voie le changement
+        try {
+            syncService.autoPushSignalementToFirebase(id);
+        } catch (Exception e) {
+            log.warn("⚠️ Auto-push échoué après avancement: {}", e.getMessage());
+        }
+        
+        return saved;
     }
 
     /**
